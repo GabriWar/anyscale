@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
 )
 
 func TestFirstIconName(t *testing.T) {

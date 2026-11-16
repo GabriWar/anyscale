@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"deedles.dev/trayscale/internal/peersearch"
+	"github.com/gabriwar/anyscale/internal/peersearch"
 	"tailscale.com/tailcfg"
 )
 

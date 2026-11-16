@@ -17,13 +17,14 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/gio"
 	"codeberg.org/puregotk/puregotk/v4/glib"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/autosave"
-	"deedles.dev/trayscale/internal/giofs"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/metadata"
-	"deedles.dev/trayscale/internal/tray"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/autosave"
+	"github.com/gabriwar/anyscale/internal/giofs"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/metadata"
+	"github.com/gabriwar/anyscale/internal/mix"
+	"github.com/gabriwar/anyscale/internal/tray"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"github.com/inhies/go-bytesize"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/ipn"
@@ -36,14 +37,30 @@ var appCSS string
 // App is the main type for the app, containing all of the state
 // necessary to run it.
 type App struct {
-	poller *tsutil.Poller
-	online bool
+	// ctx lives as long as Run.
+	ctx context.Context
 
-	app           *adw.Application
-	win           *MainWindow
-	settings      *gio.Settings
-	tray          *tray.Tray
-	activeProfile ipn.ProfileID
+	// mu guards poller, ts and stopPoller, which are replaced when
+	// another tailnet is selected. They're only replaced on the main
+	// thread, but they're read from others.
+	mu         sync.Mutex
+	poller     *tsutil.Poller
+	ts         *tsutil.Client
+	stopPoller context.CancelFunc
+
+	mix        *mix.Client
+	helper     mix.Helper
+	mixStatus  mix.Status
+	mixErr     error
+	mixLoaded  bool
+	mixRefresh chan struct{}
+	// tailnet is the profile ID of the tailnet shown in the window.
+	tailnet string
+
+	app      *adw.Application
+	win      *MainWindow
+	settings *gio.Settings
+	tray     *tray.Tray
 	// trayDone stops the goroutine started by startTray.
 	trayDone context.CancelFunc
 
@@ -94,34 +111,33 @@ func (a *App) stopSpin() {
 }
 
 func (a *App) showOperatorDialog() {
-	Info{
-		Heading: locale.Get("User is not Tailscale Operator"),
-		Body:    locale.Get("Some functionality may not work as expected. To resolve, run the following command in a terminal:"),
-		Extra: func() *gtk.Widget {
-			const command = "sudo tailscale set --operator=$USER"
-			w := gtk.NewLabel(command)
-			w.AddCssClass("code")
-			w.AddCssClass("monospace")
-			w.AddCssClass("frame")
-			w.SetSelectable(true)
-			return &w.Widget
-		},
-	}.Show(a, nil)
+	t, ok := mix.Find(a.mixStatus, a.tailnet)
+	if !ok {
+		return
+	}
+	Confirmation{
+		Heading: locale.Get("Not Allowed to Control %v", t.Name),
+		Body:    locale.Get("Your user isn't the operator of this tailnet, so connecting, logging in and changing settings won't work. Make your user its operator? This asks for administrator access."),
+		Accept:  locale.Get("_Make Me Operator"),
+		Reject:  locale.Get("_Not Now"),
+	}.Show(a, func(accept bool) {
+		if !accept {
+			return
+		}
+		a.runHelper(func(ctx context.Context) error {
+			return a.helper.SetOperator(ctx, t.Name)
+		}, func(err error) {
+			if err != nil {
+				a.toast(locale.Get("Failed to make you the operator: %v", err))
+			}
+		})
+	})
 }
 
 func (a *App) update(status tsutil.Status) {
 	switch status := status.(type) {
 	case *tsutil.IPNStatus:
 		online := status.Online()
-		if a.online != online {
-			a.online = online
-
-			body := locale.Get("Tailscale is not connected.")
-			if online {
-				body = locale.Get("Tailscale is connected.")
-			}
-			a.notify(locale.Get("Tailscale Status"), body) // TODO: Notify on startup if not connected?
-		}
 
 		// LookupAction ref-sinks a transfer-none result. Drop that ref.
 		if action := a.app.LookupAction("use_exit_node"); action != nil {
@@ -129,6 +145,15 @@ func (a *App) update(status tsutil.Status) {
 			if useExitNodeAction, ok := gutil.Cast[gio.SimpleAction](action, gio.SimpleActionGLibType()); ok {
 				useExitNodeAction.SetEnabled(online)
 				useExitNodeAction.SetState(glib.NewVariantBoolean(status.ExitNodeActive()))
+			}
+		}
+
+		// The dashboard only exists for Tailscale's control server, not
+		// Headscale.
+		if action := a.app.LookupAction("admin_dashboard"); action != nil {
+			defer gutil.Obj(action).Unref()
+			if dashboard, ok := gutil.Cast[gio.SimpleAction](action, gio.SimpleActionGLibType()); ok {
+				dashboard.SetEnabled(usesTailscaleControl(status.Prefs.ControlURL()))
 			}
 		}
 
@@ -173,16 +198,6 @@ func (a *App) update(status tsutil.Status) {
 			a.win.Update(status)
 		}
 
-	case *tsutil.ProfileStatus:
-		a.activeProfile = status.Profile.ID
-		if a.tray != nil {
-			a.tray.SetProfiles(status)
-			a.tray.SetActiveProfile(status.Profile.ID)
-		}
-
-		if a.win != nil {
-			a.win.Update(status)
-		}
 	}
 }
 
@@ -261,11 +276,34 @@ func unrefFiles(files []*gio.FileBase) {
 	}
 }
 
+// current returns the poller and LocalAPI client of the selected
+// tailnet.
+func (a *App) current() (*tsutil.Poller, *tsutil.Client) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.poller, a.ts
+}
+
+// currentPoller returns the poller of the selected tailnet.
+func (a *App) currentPoller() *tsutil.Poller {
+	p, _ := a.current()
+	return p
+}
+
+// client returns the LocalAPI client of the selected tailnet. Before
+// there's a poller, it returns one that can't connect.
+func (a *App) client() *tsutil.Client {
+	if _, c := a.current(); c != nil {
+		return c
+	}
+	return tsutil.NewClient(noTailnetSocket)
+}
+
 // getIPN returns the latest status, or ctx's error if there's none
 // before ctx is done, as when tailscaled has been down since launch.
 func (a *App) getIPN(ctx context.Context) (*tsutil.IPNStatus, error) {
 	select {
-	case s := <-a.poller.GetIPN():
+	case s := <-a.currentPoller().GetIPN():
 		return s, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -301,7 +339,7 @@ func (a *App) setRunning(ctx context.Context, up bool) (bool, error) {
 	}
 
 	select {
-	case a.poller.SetRunning() <- up:
+	case a.currentPoller().SetRunning() <- up:
 		return true, nil
 	case <-ctx.Done():
 		return false, ctx.Err()
@@ -342,7 +380,7 @@ func (a *App) toggleConn(ctx context.Context) {
 func (a *App) onAppOpen(ctx context.Context, files []*gio.FileBase) {
 	type selectOption = SelectOption[tailcfg.NodeView]
 
-	s := <-a.poller.GetIPN()
+	s := <-a.currentPoller().GetIPN()
 	if !s.Online() {
 		unrefFiles(files)
 		return
@@ -407,17 +445,7 @@ func (a *App) onAppActivate(ctx context.Context) {
 
 	useExitNodeAction := gio.NewSimpleActionStateful("use_exit_node", nil, glib.NewVariantBoolean(false))
 	gutil.Connect(useExitNodeAction, useExitNodeAction.ConnectChangeState, func(_ gio.SimpleAction, state uintptr) {
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		s := gutil.Ptr[glib.Variant](state).GetBoolean()
-		err := tsutil.SetUseExitNode(ctx, s, a.exitNodeSelection())
-		if err != nil {
-			slog.Error("failed to set exit node state", "state", s, "err", err)
-			if a.win != nil {
-				a.win.Toast(locale.Get("Failed to toggle exit node"))
-			}
-		}
+		a.useExitNode(gutil.Ptr[glib.Variant](state).GetBoolean())
 	})
 	useExitNodeAction.SetEnabled(false)
 	a.addAction(useExitNodeAction, nil)
@@ -438,6 +466,8 @@ func (a *App) onAppActivate(ctx context.Context) {
 		a.addAction(showOffline, nil)
 	}
 
+	a.addAction(gio.NewSimpleAction("add_tailnet", nil), func(*glib.Variant) { a.showAddTailnet() })
+	a.addAction(gio.NewSimpleAction("remove_tailnet", nil), func(*glib.Variant) { a.showRemoveTailnet() })
 	a.addAction(gio.NewSimpleAction("change_control_server", nil), func(*glib.Variant) { a.showChangeControlServer(ctx) })
 	a.addAction(gio.NewSimpleAction("preferences", nil), func(*glib.Variant) { a.showPreferences() })
 	a.addAction(gio.NewSimpleAction("admin_dashboard", nil), func(*glib.Variant) { a.launchURI(tsutil.AdminDashboardURL) })
@@ -464,12 +494,18 @@ func (a *App) onAppActivate(ctx context.Context) {
 		return false
 	})
 
-	<-a.poller.Poll()
+	p := a.currentPoller()
+	<-p.Poll()
+	a.win.UpdateTailnets(a.mixStatus, a.mixErr, a.tailnet)
 	a.win.MainWindow.Present()
 
 	go func() {
-		s := <-a.poller.GetIPN()
-		gutil.IdleAdd(func() { a.update(s) })
+		s := <-p.GetIPN()
+		gutil.IdleAdd(func() {
+			if a.currentPoller() == p {
+				a.update(s)
+			}
+		})
 	}()
 }
 
@@ -488,6 +524,7 @@ func (a *App) login(ctx context.Context) {
 			})
 		}
 
+		p, c := a.current()
 		status, err := a.getIPN(ctx)
 		if err != nil {
 			slog.Error("failed to start login", "err", err)
@@ -499,7 +536,7 @@ func (a *App) login(ctx context.Context) {
 			return
 		}
 
-		err = tsutil.StartLogin(ctx)
+		err = c.StartLogin(ctx)
 		if err != nil {
 			slog.Error("failed to start login", "err", err)
 			fail()
@@ -511,7 +548,7 @@ func (a *App) login(ctx context.Context) {
 			case <-ctx.Done():
 				fail()
 				return
-			case status := <-a.poller.NextIPN():
+			case status := <-p.NextIPN():
 				if status.BrowseToURL != "" {
 					gutil.IdleAdd(func() { a.launchURI(status.BrowseToURL) })
 					return
@@ -530,7 +567,7 @@ func (a *App) launchURI(uri string) {
 
 func (a *App) initTray(ctx context.Context) {
 	if a.tray != nil {
-		a.startTray(ctx, nil)
+		a.startTray(ctx, trayTailnets(a.mixStatus))
 		return
 	}
 
@@ -551,57 +588,45 @@ func (a *App) initTray(ctx context.Context) {
 				ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 				defer cancel()
 
-				s := <-a.poller.GetIPN()
+				s, err := a.getIPN(ctx)
+				if err != nil {
+					slog.Error("toggle exit node from tray", "err", err)
+					return
+				}
 				toggle := !s.ExitNodeActive()
-				err := tsutil.SetUseExitNode(ctx, toggle, sel)
 				gutil.IdleAdd(func() {
-					if err != nil {
-						a.notify(locale.Get("Toggle exit node"), err.Error())
-						slog.Error("toggle exit node from tray", "err", err)
-						return
-					}
-
-					if toggle {
-						a.notify(locale.Get("Exit node"), locale.Get("Enabled"))
-						return
-					}
-					a.notify(locale.Get("Exit node"), locale.Get("Disabled"))
+					a.useExitNodeWith(toggle, sel, func(err error) {
+						if err != nil {
+							a.notify(locale.Get("Toggle exit node"), err.Error())
+							return
+						}
+						if toggle {
+							a.notify(locale.Get("Exit node"), locale.Get("Enabled"))
+							return
+						}
+						a.notify(locale.Get("Exit node"), locale.Get("Disabled"))
+					})
 				})
 			}()
 		},
 
 		OnSelfNode: func() {
 			go func() {
-				addr := (<-a.poller.GetIPN()).SelfAddr()
+				addr := (<-a.currentPoller().GetIPN()).SelfAddr()
 				if !addr.IsValid() {
 					return
 				}
 				gutil.IdleAdd(func() {
 					a.clip(addr.String())
 					if a.win != nil {
-						a.notify(locale.Get("Trayscale"), locale.Get("Copied address to clipboard"))
+						a.notify(locale.Get("Anyscale"), locale.Get("Copied address to clipboard"))
 					}
 				})
 			}()
 		},
 
-		OnProfileSwitch: func(id ipn.ProfileID) {
-			gutil.IdleAdd(func() {
-				if a.tray == nil || id == a.activeProfile {
-					return
-				}
-
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				defer cancel()
-
-				err := tsutil.SwitchProfile(ctx, id)
-				if err != nil {
-					slog.Error("switch profile from tray", "err", err)
-					a.notify(locale.Get("Switch account"), err.Error())
-					return
-				}
-				<-a.poller.Poll()
-			})
+		OnTailnetToggle: func(id string) {
+			gutil.IdleAdd(func() { a.toggleTailnet(id) })
 		},
 
 		OnQuit: func() {
@@ -609,34 +634,26 @@ func (a *App) initTray(ctx context.Context) {
 		},
 	}
 
-	var ps *tsutil.ProfileStatus
-	profile, profiles, err := tsutil.GetProfileStatus(ctx)
-	if err != nil {
-		slog.Error("get profile status", "err", err)
-	} else {
-		a.activeProfile = profile.ID
-		ps = &tsutil.ProfileStatus{Profile: profile, Profiles: profiles}
-	}
-
-	a.startTray(ctx, ps)
+	a.startTray(ctx, trayTailnets(a.mixStatus))
 }
 
 // startTray shows the tray icon without waiting for a status, which
 // never arrives while tailscaled is down. The menu fills in from the
 // latest status once there is one, and from update after that.
-func (a *App) startTray(ctx context.Context, profiles *tsutil.ProfileStatus) {
+func (a *App) startTray(ctx context.Context, tailnets []tray.Tailnet) {
 	a.stopTray()
 	t := a.tray
-	err := t.Start(profiles)
+	err := t.Start(tailnets)
 	if err != nil {
 		slog.Error("failed to start tray icon", "err", err)
 		return
 	}
 
 	ctx, a.trayDone = context.WithCancel(ctx)
+	p := a.currentPoller()
 	go func() {
 		select {
-		case s := <-a.poller.GetIPN():
+		case s := <-p.GetIPN():
 			t.Update(s)
 		case <-ctx.Done():
 		}
@@ -690,17 +707,24 @@ func (a *App) Run(ctx context.Context) {
 		return
 	}
 
-	a.initSettings(ctx)
-
-	a.poller = &tsutil.Poller{
-		Interval: a.getInterval(),
-		New:      func(s tsutil.Status) { gutil.IdleAdd(func() { a.update(s) }) },
-		Error: func(err error) {
-			slog.Error("set Tailscale status", "err", err)
-			a.toast(locale.Get("Failed to start or stop Tailscale"))
-		},
+	a.ctx = ctx
+	a.mix = mix.NewClient("")
+	a.mixRefresh = make(chan struct{}, 1)
+	if exe, err := os.Executable(); err == nil {
+		a.helper = mix.Helper{API: a.mix, Exe: exe}
+	} else {
+		slog.Error("find anyscale binary for privileged operations", "err", err)
 	}
-	go a.poller.Run(ctx)
+
+	a.initSettings(ctx)
+	a.startPoller(noTailnetSocket)
+	go a.watchMix(ctx)
 
 	a.app.Run(int32(len(os.Args)), os.Args)
+}
+
+// usesTailscaleControl reports whether controlURL is Tailscale's own
+// control server, rather than, say, Headscale.
+func usesTailscaleControl(controlURL string) bool {
+	return controlURL == "" || ipn.IsLoginServerSynonym(controlURL)
 }

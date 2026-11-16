@@ -14,11 +14,11 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/gio"
 	"codeberg.org/puregotk/puregotk/v4/glib"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gobj"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/tsutil"
 	"deedles.dev/xiter"
+	"github.com/gabriwar/anyscale/internal/gobj"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"github.com/inhies/go-bytesize"
 	"tailscale.com/client/tailscale/apitype"
 	"tailscale.com/tailcfg"
@@ -125,24 +125,19 @@ func (page *SelfPage) init(a *App, status *tsutil.IPNStatus) {
 	})
 
 	page.connectSwitch(page.AdvertiseExitNodeRow, "advertise exit node", func(s bool) error {
-		if s {
-			err := tsutil.DisableExitNode(context.TODO())
-			if err != nil {
-				slog.Error("disable existing exit node", "err", err)
-				// Continue anyways.
-			}
+		if s && a.exitNodeActive() {
+			// tailmix owns exit node use; stop it first.
+			a.setExitNode("", nil)
 		}
-		return tsutil.AdvertiseExitNode(context.TODO(), s)
+		return a.client().AdvertiseExitNode(context.TODO(), s)
 	})
 	page.connectSwitch(page.AllowLANAccessRow, "allow LAN access", func(s bool) error {
-		return tsutil.AllowLANAccess(context.TODO(), s)
+		return a.client().AllowLANAccess(context.TODO(), s)
 	})
-	page.connectSwitch(page.AcceptRoutesRow, "accept routes", func(s bool) error {
-		return tsutil.AcceptRoutes(context.TODO(), s)
-	})
-	page.connectSwitch(page.AcceptDNSRow, "accept DNS", func(s bool) error {
-		return tsutil.AcceptDNS(context.TODO(), s)
-	})
+	// tailmix keeps route acceptance on for every tailnet and decides
+	// which routes and DNS to use itself, so these would do nothing.
+	page.AcceptRoutesRow.SetVisible(false)
+	page.AcceptDNSRow.SetVisible(false)
 
 	gutil.Connect(page.AdvertiseRouteButton, page.AdvertiseRouteButton.ConnectClicked, func(gtk.Button) {
 		Prompt{
@@ -163,13 +158,13 @@ func (page *SelfPage) init(a *App, status *tsutil.IPNStatus) {
 				return
 			}
 
-			prefs, err := tsutil.Prefs(context.TODO())
+			prefs, err := a.client().Prefs(context.TODO())
 			if err != nil {
 				slog.Error("get prefs", "err", err)
 				return
 			}
 
-			err = tsutil.AdvertiseRoutes(
+			err = a.client().AdvertiseRoutes(
 				context.TODO(),
 				append(prefs.AdvertiseRoutes, p),
 			)
@@ -182,7 +177,7 @@ func (page *SelfPage) init(a *App, status *tsutil.IPNStatus) {
 
 	type latencyEntry = xiter.Pair[string, time.Duration]
 	gutil.Connect(page.NetCheckButton, page.NetCheckButton.ConnectClicked, func(gtk.Button) {
-		r, dm, err := tsutil.NetCheck(context.TODO(), true)
+		r, dm, err := a.client().NetCheck(context.TODO(), true)
 		if err != nil {
 			slog.Error("netcheck", "err", err)
 			return
@@ -255,7 +250,7 @@ func (page *SelfPage) routeRow(route netip.Prefix) *gtk.Widget {
 		routes := slices.Collect(xiter.Filter(page.routeModel.All(), func(p netip.Prefix) bool {
 			return p.Compare(route) != 0
 		}))
-		err := tsutil.AdvertiseRoutes(context.TODO(), routes)
+		err := page.app.client().AdvertiseRoutes(context.TODO(), routes)
 		if err != nil {
 			slog.Error("advertise routes", "err", err)
 			return
@@ -310,12 +305,12 @@ func (page *SelfPage) fileRow(file apitype.WaitingFile) *gtk.Widget {
 			Reject:  locale.Get("_Cancel"),
 		}.Show(a, func(accept bool) {
 			if accept {
-				err := tsutil.DeleteWaitingFile(context.TODO(), file.Name)
+				err := a.client().DeleteWaitingFile(context.TODO(), file.Name)
 				if err != nil {
 					slog.Error("delete file", "err", err)
 					return
 				}
-				<-a.poller.Poll()
+				<-a.currentPoller().Poll()
 			}
 		})
 	})

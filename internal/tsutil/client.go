@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/netip"
+	"sync"
 
 	"tailscale.com/client/local"
 	"tailscale.com/client/tailscale/apitype"
@@ -19,8 +20,50 @@ import (
 	"tailscale.com/util/eventbus"
 )
 
+// Client talks to one tailscaled-compatible LocalAPI socket. With
+// tailmix, each tailnet has its own socket and so its own Client.
+type Client struct {
+	lc local.Client
+
+	// socket is passed to the tailscale CLI. Empty means its default.
+	socket string
+}
+
+// NewClient returns a Client for the LocalAPI socket at path. An empty
+// path uses tailscaled's default socket.
+func NewClient(path string) *Client {
+	c := &Client{socket: path}
+	if path != "" {
+		c.lc.Socket = path
+		c.lc.UseSocketOnly = true
+	}
+	return c
+}
+
+// Socket returns the LocalAPI socket path that c uses, or an empty
+// string for tailscaled's default socket.
+func (c *Client) Socket() string {
+	return c.socket
+}
+
+// cliMu serializes tailscale CLI runs, as the CLI keeps its socket in
+// a package variable.
+var cliMu sync.Mutex
+
+// runCLI runs the tailscale CLI with args against c's socket.
+func (c *Client) runCLI(ctx context.Context, args ...string) error {
+	if c.socket != "" {
+		args = append([]string{"--socket=" + c.socket}, args...)
+	}
+	cliMu.Lock()
+	defer cliMu.Unlock()
+	return cli.RunWithContext(ctx, args)
+}
+
 var (
-	localClient    local.Client
+	// defaultClient is used by Pollers without a Client.
+	defaultClient Client
+
 	bus            = eventbus.New()
 	monitor        = initMonitor()
 	netcheckClient = netcheck.Client{
@@ -38,29 +81,29 @@ func initMonitor() *netmon.Monitor {
 }
 
 // Prefs returns the options of the local node.
-func Prefs(ctx context.Context) (*ipn.Prefs, error) {
-	return localClient.GetPrefs(ctx)
+func (c *Client) Prefs(ctx context.Context) (*ipn.Prefs, error) {
+	return c.lc.GetPrefs(ctx)
 }
 
 // Start connects the local peer to the Tailscale network.
-func Start(ctx context.Context) error {
-	return cli.RunWithContext(ctx, []string{"up"})
+func (c *Client) Start(ctx context.Context) error {
+	return c.runCLI(ctx, "up")
 }
 
 // Stop disconnects the local peer from the Tailscale network.
-func Stop(ctx context.Context) error {
-	return cli.RunWithContext(ctx, []string{"down"})
+func (c *Client) Stop(ctx context.Context) error {
+	return c.runCLI(ctx, "down")
 }
 
 // ExitNode uses the specified peer as an exit node, or unsets
 // an existing exit node if peer is an empty string. Unsetting it this
 // way also makes Tailscale forget the previous exit node, so use
 // [DisableExitNode] to turn exit node use off instead.
-func ExitNode(ctx context.Context, peer tailcfg.StableNodeID) error {
+func (c *Client) ExitNode(ctx context.Context, peer tailcfg.StableNodeID) error {
 	if peer == "" {
 		var prefs ipn.Prefs
 		prefs.ClearExitNode()
-		_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+		_, err := c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 			Prefs:           prefs,
 			ExitNodeIDSet:   true,
 			ExitNodeIPSet:   true,
@@ -75,7 +118,7 @@ func ExitNode(ctx context.Context, peer tailcfg.StableNodeID) error {
 	prefs := ipn.Prefs{
 		ExitNodeID: peer,
 	}
-	_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err := c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:           prefs,
 		ExitNodeIDSet:   true,
 		ExitNodeIPSet:   true,
@@ -120,40 +163,57 @@ func (sel ExitNodeSelection) String() string {
 
 // SetUseExitNode turns exit node use on or off. When turning it on,
 // sel determines which exit node is used.
-func SetUseExitNode(ctx context.Context, use bool, sel ExitNodeSelection) error {
+func (c *Client) SetUseExitNode(ctx context.Context, use bool, sel ExitNodeSelection) error {
 	if use && sel == SelectRecommendedExitNode {
-		err := useAutoExitNode(ctx)
+		err := c.useAutoExitNode(ctx)
 		if err == nil {
 			return nil
 		}
 		slog.Error("use automatic exit node", "err", err)
-		return errors.Join(err, useSuggestedExitNode(ctx))
+		return errors.Join(err, c.useSuggestedExitNode(ctx))
 	}
 
 	if !use {
-		return DisableExitNode(ctx)
+		return c.DisableExitNode(ctx)
 	}
 
-	useErr := localClient.SetUseExitNode(ctx, true)
+	useErr := c.lc.SetUseExitNode(ctx, true)
 	if useErr != nil {
-		suggestErr := useSuggestedExitNode(ctx)
+		suggestErr := c.useSuggestedExitNode(ctx)
 		if suggestErr == nil {
 			return nil
 		}
 		return errors.Join(useErr, suggestErr)
 	}
 
-	return keepPreviousExitNode(ctx)
+	return c.keepPreviousExitNode(ctx)
+}
+
+// ExitNodeChoice returns the exit node to use when exit node use is
+// turned on with sel. It doesn't change anything, so that something
+// else, such as tailmix, can apply the choice. Without a previous exit
+// node, it falls back to the recommended one.
+func (c *Client) ExitNodeChoice(ctx context.Context, sel ExitNodeSelection) (tailcfg.StableNodeID, error) {
+	if sel == SelectPreviousExitNode {
+		prefs, err := c.Prefs(ctx)
+		if err != nil {
+			return "", fmt.Errorf("get prefs: %w", err)
+		}
+		if prior := prefs.InternalExitNodePrior; prior != "" {
+			return prior, nil
+		}
+	}
+	return c.suggestExitNode(ctx)
 }
 
 // DisableExitNode turns exit node use off. Tailscale remembers the
 // exit node that was in use, so [SelectPreviousExitNode] can get it
 // back.
-func DisableExitNode(ctx context.Context) error {
-	if err := pinAutoExitNode(ctx); err != nil {
+func (c *Client) DisableExitNode(ctx context.Context) error {
+	if err := c.pinAutoExitNode(ctx); err != nil {
 		slog.Error("pin automatic exit node before disabling", "err", err)
 	}
-	return localClient.SetUseExitNode(ctx, false)
+	return c.lc.SetUseExitNode(ctx, false)
 }
 
 // pinAutoExitNode replaces automatic exit node selection with the node
@@ -161,8 +221,8 @@ func DisableExitNode(ctx context.Context) error {
 // rather than the node, as the prior exit node when exit node use is
 // turned off, so without this, turning it back on with
 // [SelectPreviousExitNode] can't get the node that was in use back.
-func pinAutoExitNode(ctx context.Context) error {
-	prefs, err := Prefs(ctx)
+func (c *Client) pinAutoExitNode(ctx context.Context) error {
+	prefs, err := c.Prefs(ctx)
 	if err != nil {
 		return fmt.Errorf("get prefs: %w", err)
 	}
@@ -175,7 +235,7 @@ func pinAutoExitNode(ctx context.Context) error {
 		return nil
 	}
 
-	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err = c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		ExitNodeID:      id,
 		AutoExitNodeSet: true,
 		ExitNodeIDSet:   true,
@@ -187,8 +247,8 @@ func pinAutoExitNode(ctx context.Context) error {
 	return nil
 }
 
-func useAutoExitNode(ctx context.Context) error {
-	_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+func (c *Client) useAutoExitNode(ctx context.Context) error {
+	_, err := c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		AutoExitNode:    ipn.AnyExitNode,
 		AutoExitNodeSet: true,
 	})
@@ -203,8 +263,8 @@ func useAutoExitNode(ctx context.Context) error {
 // as an error.
 var errNoRecommendedExitNode = errors.New("no exit node to recommend")
 
-func suggestExitNode(ctx context.Context) (tailcfg.StableNodeID, error) {
-	suggested, err := localClient.SuggestExitNode(ctx)
+func (c *Client) suggestExitNode(ctx context.Context) (tailcfg.StableNodeID, error) {
+	suggested, err := c.lc.SuggestExitNode(ctx)
 	if err != nil {
 		return "", fmt.Errorf("suggest exit node: %w", err)
 	}
@@ -215,20 +275,20 @@ func suggestExitNode(ctx context.Context) (tailcfg.StableNodeID, error) {
 	return suggested.ID, nil
 }
 
-func useSuggestedExitNode(ctx context.Context) error {
-	id, err := suggestExitNode(ctx)
+func (c *Client) useSuggestedExitNode(ctx context.Context) error {
+	id, err := c.suggestExitNode(ctx)
 	if err != nil {
 		return err
 	}
-	return ExitNode(ctx, id)
+	return c.ExitNode(ctx, id)
 }
 
 // keepPreviousExitNode pins the exit node that the daemon just
 // restored. Turning exit node use off while automatic selection was on
 // makes the daemon remember that, so turning it back on would resume
 // automatic selection instead of using the previous node.
-func keepPreviousExitNode(ctx context.Context) error {
-	prefs, err := Prefs(ctx)
+func (c *Client) keepPreviousExitNode(ctx context.Context) error {
+	prefs, err := c.Prefs(ctx)
 	if err != nil {
 		return fmt.Errorf("get prefs: %w", err)
 	}
@@ -239,15 +299,15 @@ func keepPreviousExitNode(ctx context.Context) error {
 	id := prefs.ExitNodeID
 	// The daemon uses this placeholder until it has picked a node.
 	if id == "" || id == "auto:any" {
-		id, err = suggestExitNode(ctx)
+		id, err = c.suggestExitNode(ctx)
 		if err != nil {
 			// Turn it back off rather than leave automatic selection on
 			// with no node. Tailscale remembers automatic mode again.
-			return errors.Join(err, localClient.SetUseExitNode(ctx, false))
+			return errors.Join(err, c.lc.SetUseExitNode(ctx, false))
 		}
 	}
 
-	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err = c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		ExitNodeID:      id,
 		AutoExitNodeSet: true,
 		ExitNodeIDSet:   true,
@@ -261,14 +321,14 @@ func keepPreviousExitNode(ctx context.Context) error {
 
 // AdvertiseExitNode enables and disables exit node advertisement for
 // the current node.
-func AdvertiseExitNode(ctx context.Context, enable bool) error {
-	prefs, err := Prefs(ctx)
+func (c *Client) AdvertiseExitNode(ctx context.Context, enable bool) error {
+	prefs, err := c.Prefs(ctx)
 	if err != nil {
 		return fmt.Errorf("get prefs: %w", err)
 	}
 	prefs.SetAdvertiseExitNode(enable)
 
-	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err = c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:              *prefs,
 		AdvertiseRoutesSet: true,
 	})
@@ -279,8 +339,8 @@ func AdvertiseExitNode(ctx context.Context, enable bool) error {
 	return nil
 }
 
-func AdvertiseRoutes(ctx context.Context, routes []netip.Prefix) error {
-	prefs, err := Prefs(ctx)
+func (c *Client) AdvertiseRoutes(ctx context.Context, routes []netip.Prefix) error {
+	prefs, err := c.Prefs(ctx)
 	if err != nil {
 		return fmt.Errorf("get prefs: %w", err)
 	}
@@ -288,7 +348,7 @@ func AdvertiseRoutes(ctx context.Context, routes []netip.Prefix) error {
 	prefs.AdvertiseRoutes = routes
 	prefs.SetAdvertiseExitNode(exit)
 
-	_, err = localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err = c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:              *prefs,
 		AdvertiseRoutesSet: true,
 	})
@@ -302,12 +362,12 @@ func AdvertiseRoutes(ctx context.Context, routes []netip.Prefix) error {
 // AllowLANAccess enables and disables the ability for the current
 // node to get access to the regular LAN that it is connected to while
 // an exit node is in use.
-func AllowLANAccess(ctx context.Context, allow bool) error {
+func (c *Client) AllowLANAccess(ctx context.Context, allow bool) error {
 	prefs := ipn.Prefs{
 		ExitNodeAllowLANAccess: allow,
 	}
 
-	_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err := c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:                     prefs,
 		ExitNodeAllowLANAccessSet: true,
 	})
@@ -320,12 +380,12 @@ func AllowLANAccess(ctx context.Context, allow bool) error {
 
 // AcceptRoutes sets whether or not all shared subnet routes from
 // other nodes should be used by the local node.
-func AcceptRoutes(ctx context.Context, accept bool) error {
+func (c *Client) AcceptRoutes(ctx context.Context, accept bool) error {
 	prefs := ipn.Prefs{
 		RouteAll: accept,
 	}
 
-	_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err := c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:       prefs,
 		RouteAllSet: true,
 	})
@@ -338,12 +398,12 @@ func AcceptRoutes(ctx context.Context, accept bool) error {
 
 // AcceptDNS sets whether or not the Tailscale DNS config should be
 // used.
-func AcceptDNS(ctx context.Context, accept bool) error {
+func (c *Client) AcceptDNS(ctx context.Context, accept bool) error {
 	prefs := ipn.Prefs{
 		CorpDNS: accept,
 	}
 
-	_, err := localClient.EditPrefs(ctx, &ipn.MaskedPrefs{
+	_, err := c.lc.EditPrefs(ctx, &ipn.MaskedPrefs{
 		Prefs:      prefs,
 		CorpDNSSet: true,
 	})
@@ -357,14 +417,14 @@ func AcceptDNS(ctx context.Context, accept bool) error {
 // SetControlURL changes the URL of the control plane server used by
 // the daemon. If controlURL is empty, the default Tailscale server is
 // used.
-func SetControlURL(ctx context.Context, controlURL string) error {
-	prefs, err := Prefs(ctx)
+func (c *Client) SetControlURL(ctx context.Context, controlURL string) error {
+	prefs, err := c.Prefs(ctx)
 	if err != nil {
 		return fmt.Errorf("get prefs: %w", err)
 	}
 	prefs.ControlURL = controlURL
 
-	err = localClient.Start(ctx, ipn.Options{
+	err = c.lc.Start(ctx, ipn.Options{
 		UpdatePrefs: prefs,
 	})
 	if err != nil {
@@ -374,13 +434,13 @@ func SetControlURL(ctx context.Context, controlURL string) error {
 	return nil
 }
 
-func NetCheck(ctx context.Context, full bool) (*netcheck.Report, *tailcfg.DERPMap, error) {
+func (c *Client) NetCheck(ctx context.Context, full bool) (*netcheck.Report, *tailcfg.DERPMap, error) {
 	err := netcheckClient.Standalone(ctx, "")
 	if err != nil {
 		return nil, nil, fmt.Errorf("standalone: %w", err)
 	}
 
-	dm, err := localClient.CurrentDERPMap(ctx)
+	dm, err := c.lc.CurrentDERPMap(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("current DERP map: %w", err)
 	}
@@ -396,36 +456,36 @@ func NetCheck(ctx context.Context, full bool) (*netcheck.Report, *tailcfg.DERPMa
 	return r, dm, nil
 }
 
-func PushFile(ctx context.Context, target tailcfg.StableNodeID, size int64, name string, r io.Reader) error {
-	return localClient.PushFile(ctx, target, size, name, r)
+func (c *Client) PushFile(ctx context.Context, target tailcfg.StableNodeID, size int64, name string, r io.Reader) error {
+	return c.lc.PushFile(ctx, target, size, name, r)
 }
 
-func GetWaitingFile(ctx context.Context, name string) (io.ReadCloser, int64, error) {
-	return localClient.GetWaitingFile(ctx, name)
+func (c *Client) GetWaitingFile(ctx context.Context, name string) (io.ReadCloser, int64, error) {
+	return c.lc.GetWaitingFile(ctx, name)
 }
 
-func DeleteWaitingFile(ctx context.Context, name string) error {
-	return localClient.DeleteWaitingFile(ctx, name)
+func (c *Client) DeleteWaitingFile(ctx context.Context, name string) error {
+	return c.lc.DeleteWaitingFile(ctx, name)
 }
 
 // WaitingFiles polls for any pending incoming files. It returns
 // quickly if there are no files currently pending.
-func WaitingFiles(ctx context.Context) ([]apitype.WaitingFile, error) {
-	return localClient.AwaitWaitingFiles(ctx, 0)
+func (c *Client) WaitingFiles(ctx context.Context) ([]apitype.WaitingFile, error) {
+	return c.lc.AwaitWaitingFiles(ctx, 0)
 }
 
-func FileTargets(ctx context.Context) ([]apitype.FileTarget, error) {
-	return localClient.FileTargets(ctx)
+func (c *Client) FileTargets(ctx context.Context) ([]apitype.FileTarget, error) {
+	return c.lc.FileTargets(ctx)
 }
 
-func GetProfileStatus(ctx context.Context) (ipn.LoginProfile, []ipn.LoginProfile, error) {
-	return localClient.ProfileStatus(ctx)
+func (c *Client) GetProfileStatus(ctx context.Context) (ipn.LoginProfile, []ipn.LoginProfile, error) {
+	return c.lc.ProfileStatus(ctx)
 }
 
-func SwitchProfile(ctx context.Context, id ipn.ProfileID) error {
-	return localClient.SwitchProfile(ctx, id)
+func (c *Client) SwitchProfile(ctx context.Context, id ipn.ProfileID) error {
+	return c.lc.SwitchProfile(ctx, id)
 }
 
-func StartLogin(ctx context.Context) error {
-	return localClient.StartLoginInteractive(ctx)
+func (c *Client) StartLogin(ctx context.Context) error {
+	return c.lc.StartLoginInteractive(ctx)
 }

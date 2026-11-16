@@ -7,8 +7,8 @@ import (
 
 	"codeberg.org/puregotk/puregotk/v4/glib"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 )
 
 // TestStatusSwitchUpdates checks that status updates with the old

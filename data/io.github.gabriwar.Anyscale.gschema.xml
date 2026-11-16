@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <schemalist>
-	<schema path="/dev/deedles/Trayscale/" id="dev.deedles.Trayscale">
+	<schema path="/io/github/gabriwar/Anyscale/" id="io.github.gabriwar.Anyscale">
 		<key name="tray-icon" type="b">
 			<default>true</default>
 			<summary>Display an icon in the system tray</summary>
@@ -32,7 +32,7 @@
 			<summary>Automatically save incoming Taildrop files</summary>
 			<description>
 				If enabled and a destination directory is set, incoming Taildrop
-				files are saved to that directory while Trayscale is running.
+				files are saved to that directory while Anyscale is running.
 			</description>
 		</key>
 		<key name="taildrop-auto-save-dir" type="s">

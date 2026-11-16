@@ -65,7 +65,7 @@ func TestSetUseExitNodeFallback(t *testing.T) {
 			go srv.Serve(l)
 			defer srv.Close()
 
-			err := SetUseExitNode(t.Context(), test.use, SelectPreviousExitNode)
+			err := defaultClient.SetUseExitNode(t.Context(), test.use, SelectPreviousExitNode)
 			if test.wantError {
 				require.ErrorContains(t, err, "disable denied")
 			} else {
@@ -100,7 +100,7 @@ func TestExitNodeClearsStaleIP(t *testing.T) {
 	go srv.Serve(l)
 	defer srv.Close()
 
-	require.NoError(t, ExitNode(t.Context(), selected))
+	require.NoError(t, defaultClient.ExitNode(t.Context(), selected))
 	select {
 	case prefs := <-updatedPrefs:
 		require.Equal(t, selected, prefs.ExitNodeID)
@@ -208,7 +208,7 @@ func TestSetUseExitNodeSelection(t *testing.T) {
 			go srv.Serve(l)
 			defer srv.Close()
 
-			require.NoError(t, SetUseExitNode(t.Context(), true, test.sel))
+			require.NoError(t, defaultClient.SetUseExitNode(t.Context(), true, test.sel))
 			d.mu.Lock()
 			defer d.mu.Unlock()
 			require.Equal(t, test.wantID, d.prefs.ExitNodeID)
@@ -224,8 +224,8 @@ func TestSetUseExitNodePreviousAfterAutomatic(t *testing.T) {
 	go srv.Serve(l)
 	defer srv.Close()
 
-	require.NoError(t, SetUseExitNode(t.Context(), false, SelectPreviousExitNode))
-	require.NoError(t, SetUseExitNode(t.Context(), true, SelectPreviousExitNode))
+	require.NoError(t, defaultClient.SetUseExitNode(t.Context(), false, SelectPreviousExitNode))
+	require.NoError(t, defaultClient.SetUseExitNode(t.Context(), true, SelectPreviousExitNode))
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	require.Equal(t, tailcfg.StableNodeID("resolved"), d.prefs.ExitNodeID)

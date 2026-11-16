@@ -7,10 +7,9 @@ import (
 	"log/slog"
 
 	"codeberg.org/puregotk/puregotk/v4/gio"
-	"deedles.dev/trayscale/internal/autosave"
-	"deedles.dev/trayscale/internal/giofs"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/autosave"
+	"github.com/gabriwar/anyscale/internal/giofs"
+	"github.com/gabriwar/anyscale/internal/gutil"
 	"tailscale.com/tailcfg"
 )
 
@@ -28,7 +27,7 @@ func (a *App) pushFile(ctx context.Context, peerID tailcfg.StableNodeID, file *g
 	}
 	defer r.Close()
 
-	err = tsutil.PushFile(ctx, peerID, size, name, r)
+	err = a.client().PushFile(ctx, peerID, size, name, r)
 	if err != nil {
 		slog.Error("push file", "err", err)
 		return
@@ -44,7 +43,7 @@ func (a *App) saveFile(ctx context.Context, name string, file *gio.FileBase) err
 	slog := slog.With("path", gutil.FilePath(file), "filename", name)
 	slog.Info("starting file save")
 
-	r, size, err := tsutil.GetWaitingFile(ctx, name)
+	r, size, err := a.client().GetWaitingFile(ctx, name)
 	if err != nil {
 		slog.Error("get file", "err", err)
 		return err
@@ -70,13 +69,13 @@ func (a *App) saveFile(ctx context.Context, name string, file *gio.FileBase) err
 		return err
 	}
 
-	err = tsutil.DeleteWaitingFile(ctx, name)
+	err = a.client().DeleteWaitingFile(ctx, name)
 	if err != nil {
 		slog.Error("delete file", "err", err)
 		return err
 	}
 
-	<-a.poller.Poll()
+	<-a.currentPoller().Poll()
 	slog.Info("done saving file")
 	return nil
 }

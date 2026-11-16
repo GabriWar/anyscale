@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"codeberg.org/puregotk/puregotk/v4/gio"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/metadata"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/metadata"
 )
 
 // TestSecondaryInstance checks that a second launch activates the primary

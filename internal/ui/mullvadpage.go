@@ -16,11 +16,11 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gio"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gobj"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/peersearch"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/gobj"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/peersearch"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"tailscale.com/tailcfg"
 	"tailscale.com/util/set"
 )
@@ -390,24 +390,26 @@ func (page *MullvadPage) getExitNodeRow(peer tailcfg.NodeView) *mullvadExitNodeR
 		}
 
 		if s {
-			err := tsutil.AdvertiseExitNode(context.TODO(), false)
+			err := page.app.client().AdvertiseExitNode(context.TODO(), false)
 			if err != nil {
 				slog.Error("disable exit node advertisement", "err", err)
 				// Continue anyways.
 			}
 		}
 
-		var err error
+		// tailmix picks the exit node, which can take a password, so
+		// the switch follows once it's done.
+		var exit tailcfg.StableNodeID
 		if s {
-			err = tsutil.ExitNode(context.TODO(), peer.StableID())
-		} else {
-			err = tsutil.DisableExitNode(context.TODO())
+			exit = peer.StableID()
 		}
-		if err != nil {
-			slog.Error("set exit node", "err", err)
-			sw.SetActive(!s)
-			return true
-		}
+		sw.Ref()
+		page.app.setExitNode(exit, func(err error) {
+			if err != nil {
+				sw.SetActive(!s)
+			}
+			sw.Unref()
+		})
 		return true
 	})
 

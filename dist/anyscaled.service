@@ -1,0 +1,23 @@
+[Unit]
+Description=Anyscale multi-tailnet daemon (a fork of tailmix)
+Documentation=https://github.com/maisem/tailmix
+Wants=network-online.target
+After=network-online.target
+# tailmix and tailscaled fight over routes and DNS.
+Conflicts=tailscaled.service tailmixd.service
+
+[Service]
+Type=simple
+# Members of the operator group can change tailnets without a password.
+# Change it with systemctl edit anyscaled.
+Environment="ANYSCALED_FLAGS=-operator-group=wheel"
+ExecStart=@BINDIR@/anyscaled -state=/var/lib/tailmix/state.json -socket-dir=/var/run/tailmix $ANYSCALED_FLAGS
+Restart=on-failure
+RestartSec=5s
+StateDirectory=tailmix
+StateDirectoryMode=0700
+RuntimeDirectory=tailmix
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

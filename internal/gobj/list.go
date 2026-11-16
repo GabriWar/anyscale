@@ -10,7 +10,7 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/gobject"
 	"codeberg.org/puregotk/puregotk/v4/gobject/types"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
 )
 
 // Every List shares one item type. Each item's Go value lives in

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 )
 
 // TestActionsDontBlockMainLoop checks that actions which talk to

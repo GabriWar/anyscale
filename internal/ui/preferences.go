@@ -5,7 +5,7 @@ import (
 
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gobj"
+	"github.com/gabriwar/anyscale/internal/gobj"
 )
 
 //go:embed preferences.ui

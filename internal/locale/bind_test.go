@@ -6,7 +6,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"deedles.dev/trayscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/locale"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,0 +1,16 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=Anyscale
+GenericName=Multi-tailnet Tailscale Client
+Comment=Connect to several Tailscale and Headscale tailnets at once.
+Categories=System;GNOME;GTK;
+Keywords=tailscale;headscale;tailmix;vpn;
+
+Icon=io.github.gabriwar.Anyscale
+Exec=anyscale %F
+Terminal=false
+
+SingleMainWindow=true
+X-GNOME-UsesNotifications=true

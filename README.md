@@ -1,79 +1,72 @@
-Trayscale
-=========
+Anyscale
+========
 
-[![Go Report Card](https://goreportcard.com/badge/deedles.dev/trayscale)](https://goreportcard.com/report/deedles.dev/trayscale)
+Anyscale connects one Linux machine to several Tailscale and Headscale tailnets at the same time, with a GTK window and a tray icon to manage them.
 
-Trayscale is an unofficial GUI interface for the Tailscale daemon, particularly for use on Linux, that provides many features that the official Linux client does not.
+It is two things merged together:
 
-_Disclaimer: This project is in a beta state. There may still be undiscovered bugs or compatibility issues. Use at your own risk._
+* a GUI forked from [Trayscale](https://github.com/DeedleFake/trayscale) by DeedleFake, and
+* a daemon, `anyscaled`, forked from [tailmix](https://github.com/maisem/tailmix) by Maisem Ali, which runs one Tailscale node per tailnet behind a single TUN device and maps every peer to its own local address so tailnets with overlapping `100.x` addresses don't collide.
 
-![screenshot](https://github.com/user-attachments/assets/30f69ec9-630b-4d9a-98a9-cb31712c60e7)
+Features
+--------
 
-Tailscale Config
-----------------
+* A sidebar that lists every tailnet with its own connect switch.
+* Add tailnets on Tailscale or on any Headscale server (enter its URL as the login server); the browser opens to log in.
+* Remove a tailnet (keeps its identity so it can be restored) or delete it permanently, from a trash button or by right-clicking it.
+* A peer list that shows each peer's IP, OS, live upload and download rates, or when it was last seen.
+* One exit node across all tailnets, chosen through the daemon.
+* A tray icon with a checkbox per tailnet.
+* Everything else from Trayscale, per tailnet: peer details, advertised routes, network checks and so on.
 
-Trayscale interfaces with the Tailscale daemon, `tailscaled`, to perform many of its operations. In order for this to work, the daemon must have been configured with the current user as the "operator". To do this, run `sudo tailscale set --operator=$USER` from the command-line at least once manually.
+Differences from upstream tailmix
+---------------------------------
 
-In Preferences, **Exit node selection** chooses what happens when **Use Exit Node** turns on: the previous exit node, or Tailscale's [recommended exit node](https://tailscale.com/docs/features/exit-nodes/auto-exit-nodes). The self page shows which exit node is in use and can open that node's page.
+`daemon/` is tailmix v0.1.20, imported unmodified in its own commit, with these changes on top:
 
-Installation
+* The daemon is called `anyscaled`.
+* `-operator-group` lets members of a group add, remove and change tailnets without root. A tailnet that such a user adds makes them its Tailscale operator, so they can log in and connect without root too. The shipped systemd unit uses `wheel`.
+* Automatic self-updates are off by default, as Anyscale pins the tailmix version.
+
+Without the operator group, the GUI falls back to asking for permission with polkit.
+
+Install
+-------
+
+You need Go, GTK 4 and libadwaita.
+
+```sh
+make
+sudo make install
+sudo systemctl daemon-reload
+sudo systemctl enable --now anyscaled
+anyscale
+```
+
+`anyscaled` conflicts with `tailscaled`, as both manage routes and DNS, so starting it stops `tailscaled`. To go back, run `sudo systemctl disable --now anyscaled` and start `tailscaled` again.
+
+### Moving an existing tailscaled node over
+
+To keep a node's identity rather than log in again, add a disabled tailnet with the node's hostname, copy tailscaled's state into it, then enable it:
+
+```sh
+tailmix profiles add work --hostname myhost --disabled
+tailmix profiles show work --json   # note its stateDir
+sudo systemctl stop tailscaled
+sudo install -m600 /var/lib/tailscale/tailscaled.state <stateDir>/tailscaled.state
+tailmix profiles enable work
+```
+
+Don't run both daemons with the same state at once.
+
+Known issues
 ------------
 
-<a href='https://flathub.org/apps/details/dev.deedles.Trayscale'><img width='240' alt='Download on Flathub' src='https://flathub.org/assets/badges/flathub-badge-en.svg'/></a>
+* The daemon doesn't include Taildrop, so sending files doesn't work yet.
+* Peers show their normal Tailscale addresses, but this machine reaches them through tailmix's local addresses. Use MagicDNS names.
+* The tailmix daemon decides which routes and DNS to use, so the "accept routes" and "accept DNS" switches are hidden.
 
-Note that the above config note about the current user being designated as an "operator" still applies to the Flatpak version of this app. However, the `tailscale` client is bundled into the Flatpak and thus does _not_ need to be in your `$PATH`.
+License
+-------
 
-### AUR
-
-If you are on Arch Linux or a derivative, [Trayscale is available from the AUR](https://aur.archlinux.org/packages/trayscale).
-
-### Manual
-
-First, make sure that you have dependencies installed:
-
-* Go >= 1.24
-* GTK >= 4.0
-* Libadwaita >= 1.9
-
-The main Trayscale binary can be installed with `go install`:
-
-```bash
-$ go install deedles.dev/trayscale/cmd/trayscale@latest
-```
-
-If you would like, you can also copy the `.desktop` file, the icon, and other pieces of extra metadata into the places that they need to be put to function properly:
-
-* `dev.deedles-trayscale.desktop` -> `$HOME/.local/share/applications/`
-* `dev.deedles.Trayscale.png` -> `$HOME/.local/share/icons/hicolor/256x256/apps/`
-
-Note that without copying both of these files into the correct locations, notifications will likely not function correctly in GNOME. Also keep in mind that if the `trayscale` binary is not in your `$PATH` in a way that the desktop environment can locate then the `.desktop` file will not be considered valid. If this is an issue, modify the file manually and change the `Exec=` line to point directly to the binary with an absolute path.
-
-### macOS
-
-First of all, please note that macOS support is not maintained or tested by the primary developer of Trayscale. Also note that the tray icon will _not_ work in macOS.
-
-The simplest way to install Trayscale on macOS is via [Nixpkgs' unstable channel](https://search.nixos.org/packages?channel=unstable&query=trayscale). Note that it will need to be built from source if a binary cache is unavailable and the build can take some time.
-
-To build it locally without Nix, first make sure that you have installed the Go compiler, as well as necessary dependencies. The dependencies are available as the following Homebrew packages:
-* `libadwaita`
-* `gtk4`
-* `gobject-introspection`
-* `harfbuzz`
-
-Then, run the following in the root of the repository:
-
-```
-$ ./dist.sh build
-$ ./dist.sh install-macos
-```
-
-
-Localization
-------------
-
-Trayscale can display UI strings in other languages via gettext catalogs under [`po/`](po/). Go-constructed strings use gotext; GtkBuilder labels marked `translatable="yes"` use the same catalogs through libintl. See [`po/README.md`](po/README.md). Prefer `LANGUAGE=ja` (or install the matching system locale); bare `LANG=ja` without a generated libc locale is sanitized so GTK does not hang.
-
-Donate
-------
-
-<a href="https://www.buymeacoffee.com/DeedleFake" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-green.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+The GUI is MIT-licensed, like Trayscale (see `LICENSE`). The daemon is BSD-3-Clause, like tailmix (see `daemon/LICENSE`).

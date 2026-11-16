@@ -1,11 +1,11 @@
-package trayscale
+package anyscale
 
 import (
 	"embed"
 	"io/fs"
 )
 
-//go:embed LICENSE *.metainfo.xml po
+//go:embed LICENSE data/*.metainfo.xml po
 var assetsFS embed.FS
 
 func Assets() fs.FS {

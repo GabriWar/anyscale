@@ -27,12 +27,12 @@ func useHarness(t *testing.T, env string) {
 	fakeSocket = sock
 
 	// Start with no exit node, nothing remembered, and nothing advertised.
-	err := AdvertiseExitNode(t.Context(), false)
+	err := defaultClient.AdvertiseExitNode(t.Context(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Clearing ExitNodeID through the LocalAPI also clears the prior.
-	_, err = localClient.EditPrefs(t.Context(), &ipn.MaskedPrefs{
+	_, err = defaultClient.lc.EditPrefs(t.Context(), &ipn.MaskedPrefs{
 		ExitNodeIDSet:   true,
 		ExitNodeIPSet:   true,
 		AutoExitNodeSet: true,
@@ -44,7 +44,7 @@ func useHarness(t *testing.T, env string) {
 
 func harnessPrefs(t *testing.T) *ipn.Prefs {
 	t.Helper()
-	prefs, err := Prefs(t.Context())
+	prefs, err := defaultClient.Prefs(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,11 +55,11 @@ func harnessPrefs(t *testing.T) *ipn.Prefs {
 // online exit node that it doesn't.
 func harnessExitNodes(t *testing.T) (recommended, other tailcfg.StableNodeID) {
 	t.Helper()
-	suggested, err := localClient.SuggestExitNode(t.Context())
+	suggested, err := defaultClient.lc.SuggestExitNode(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	st, err := localClient.Status(t.Context())
+	st, err := defaultClient.lc.Status(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func harnessExitNodes(t *testing.T) (recommended, other tailcfg.StableNodeID) {
 func TestHarnessPreviousWithNothingToUse(t *testing.T) {
 	useHarness(t, "TSHARNESS_NOSUGGEST_SOCKET")
 
-	err := SetUseExitNode(t.Context(), true, SelectPreviousExitNode)
+	err := defaultClient.SetUseExitNode(t.Context(), true, SelectPreviousExitNode)
 	if err == nil {
 		t.Fatalf("turning on reported success with ExitNodeID %q", harnessPrefs(t).ExitNodeID)
 	}
@@ -89,14 +89,14 @@ func TestHarnessPreviousWithNothingToUse(t *testing.T) {
 func TestHarnessPreviousAfterWaitingRecommended(t *testing.T) {
 	useHarness(t, "TSHARNESS_NOSUGGEST_SOCKET")
 
-	if err := SetUseExitNode(t.Context(), true, SelectRecommendedExitNode); err != nil {
+	if err := defaultClient.SetUseExitNode(t.Context(), true, SelectRecommendedExitNode); err != nil {
 		t.Fatal(err)
 	}
-	if err := SetUseExitNode(t.Context(), false, SelectRecommendedExitNode); err != nil {
+	if err := defaultClient.SetUseExitNode(t.Context(), false, SelectRecommendedExitNode); err != nil {
 		t.Fatal(err)
 	}
 
-	err := SetUseExitNode(t.Context(), true, SelectPreviousExitNode)
+	err := defaultClient.SetUseExitNode(t.Context(), true, SelectPreviousExitNode)
 	prefs := harnessPrefs(t)
 	if err == nil {
 		t.Fatalf("turning on reported success with ExitNodeID %q", prefs.ExitNodeID)
@@ -114,16 +114,16 @@ func TestHarnessPreviousAfterTurningOffElsewhere(t *testing.T) {
 		name string
 		off  func(context.Context) error
 	}{
-		{"peer or Mullvad page switch", DisableExitNode},
+		{"peer or Mullvad page switch", defaultClient.DisableExitNode},
 		{"advertising this machine", func(ctx context.Context) error {
 			// The self page's Advertise exit node switch.
-			if err := DisableExitNode(ctx); err != nil {
+			if err := defaultClient.DisableExitNode(ctx); err != nil {
 				return err
 			}
-			if err := AdvertiseExitNode(ctx, true); err != nil {
+			if err := defaultClient.AdvertiseExitNode(ctx, true); err != nil {
 				return err
 			}
-			return AdvertiseExitNode(ctx, false)
+			return defaultClient.AdvertiseExitNode(ctx, false)
 		}},
 	}
 	for _, test := range tests {
@@ -131,7 +131,7 @@ func TestHarnessPreviousAfterTurningOffElsewhere(t *testing.T) {
 			useHarness(t, "TSHARNESS_SOCKET")
 			_, node := harnessExitNodes(t)
 
-			if err := ExitNode(t.Context(), node); err != nil {
+			if err := defaultClient.ExitNode(t.Context(), node); err != nil {
 				t.Fatal(err)
 			}
 			if err := test.off(t.Context()); err != nil {
@@ -141,7 +141,7 @@ func TestHarnessPreviousAfterTurningOffElsewhere(t *testing.T) {
 				t.Fatalf("still using %q after turning it off", id)
 			}
 
-			if err := SetUseExitNode(t.Context(), true, SelectPreviousExitNode); err != nil {
+			if err := defaultClient.SetUseExitNode(t.Context(), true, SelectPreviousExitNode); err != nil {
 				t.Fatal(err)
 			}
 			prefs := harnessPrefs(t)
@@ -156,18 +156,18 @@ func TestHarnessPreviousAfterRecommended(t *testing.T) {
 	useHarness(t, "TSHARNESS_SOCKET")
 	recommended, _ := harnessExitNodes(t)
 
-	if err := SetUseExitNode(t.Context(), true, SelectRecommendedExitNode); err != nil {
+	if err := defaultClient.SetUseExitNode(t.Context(), true, SelectRecommendedExitNode); err != nil {
 		t.Fatal(err)
 	}
 	prefs := harnessPrefs(t)
 	if prefs.ExitNodeID != recommended || !prefs.AutoExitNode.IsSet() {
 		t.Fatalf("Recommended got ExitNodeID %q, AutoExitNode %q, want %q", prefs.ExitNodeID, prefs.AutoExitNode, recommended)
 	}
-	if err := DisableExitNode(t.Context()); err != nil {
+	if err := defaultClient.DisableExitNode(t.Context()); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := SetUseExitNode(t.Context(), true, SelectPreviousExitNode); err != nil {
+	if err := defaultClient.SetUseExitNode(t.Context(), true, SelectPreviousExitNode); err != nil {
 		t.Fatal(err)
 	}
 	prefs = harnessPrefs(t)

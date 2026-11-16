@@ -8,7 +8,7 @@ import (
 	"log/slog"
 
 	"codeberg.org/puregotk/puregotk/v4/gio"
-	"deedles.dev/trayscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
 	"github.com/klauspost/compress/zstd"
 )
 

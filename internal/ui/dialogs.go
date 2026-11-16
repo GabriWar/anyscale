@@ -3,8 +3,8 @@ package ui
 import (
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/locale"
 )
 
 // window returns the main window, borrowed, or nil.

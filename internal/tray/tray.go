@@ -10,9 +10,8 @@ import (
 	"unique"
 
 	"deedles.dev/tray"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/tsutil"
-	"tailscale.com/ipn"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 )
 
 var (
@@ -54,7 +53,7 @@ type Tray struct {
 	OnConnToggle    func()
 	OnExitToggle    func()
 	OnSelfNode      func()
-	OnProfileSwitch func(ipn.ProfileID)
+	OnTailnetToggle func(id string)
 	OnQuit          func()
 
 	m    sync.Mutex
@@ -66,17 +65,23 @@ type Tray struct {
 	exitToggleItem *tray.MenuItem
 	selfNodeItem   *tray.MenuItem
 	quitSep        *tray.MenuItem
-	accountItem    *tray.MenuItem
-	accountIDs     []ipn.ProfileID
-	profileItems   map[ipn.ProfileID]*tray.MenuItem
-	profileNames   map[ipn.ProfileID]string
-	activeID       ipn.ProfileID
+	tailnetSep     *tray.MenuItem
+	tailnetIDs     []string
+	tailnetItems   map[string]*tray.MenuItem
+	tailnets       map[string]Tailnet
 	quitItem       *tray.MenuItem
+}
+
+// Tailnet is one tailnet's entry in the tray menu.
+type Tailnet struct {
+	ID        string
+	Name      string
+	Connected bool
 }
 
 // Start registers the tray icon. The menu shows a disconnected state
 // until the first call to Update.
-func (t *Tray) Start(profiles *tsutil.ProfileStatus) error {
+func (t *Tray) Start(tailnets []Tailnet) error {
 	if t.item != nil {
 		return nil
 	}
@@ -85,8 +90,8 @@ func (t *Tray) Start(profiles *tsutil.ProfileStatus) error {
 	defer t.m.Unlock()
 
 	item, err := tray.New(
-		tray.ItemID("dev.deedles.Trayscale"),
-		tray.ItemTitle("Trayscale"),
+		tray.ItemID("io.github.gabriwar.Anyscale"),
+		tray.ItemTitle("Anyscale"),
 		tray.ItemIconPixmap(&statusIconInactive),
 		tray.ItemHandler(tray.ActivateHandler(func(x, y int) error {
 			t.OnShow()
@@ -101,8 +106,8 @@ func (t *Tray) Start(profiles *tsutil.ProfileStatus) error {
 
 	menu := item.Menu()
 
-	t.profileItems = make(map[ipn.ProfileID]*tray.MenuItem)
-	t.profileNames = make(map[ipn.ProfileID]string)
+	t.tailnetItems = make(map[string]*tray.MenuItem)
+	t.tailnets = make(map[string]Tailnet)
 
 	t.showItem, _ = menu.AddChild(tray.MenuItemLabel(locale.Get("Show")), handler(t.OnShow))
 	menu.AddChild(tray.MenuItemType(tray.Separator))
@@ -122,7 +127,7 @@ func (t *Tray) Start(profiles *tsutil.ProfileStatus) error {
 	)
 	t.quitSep, _ = menu.AddChild(tray.MenuItemType(tray.Separator))
 	t.quitItem, _ = menu.AddChild(tray.MenuItemLabel(locale.Get("Quit")), handler(t.OnQuit))
-	t.syncAccounts(profiles)
+	t.syncTailnets(tailnets)
 
 	return nil
 }
@@ -142,12 +147,11 @@ func (t *Tray) Close() error {
 	err := t.item.Close()
 	t.item = nil
 	t.prev = nil
-	t.accountItem = nil
 	t.quitSep = nil
-	t.accountIDs = nil
-	t.profileItems = nil
-	t.profileNames = nil
-	t.activeID = ""
+	t.tailnetSep = nil
+	t.tailnetIDs = nil
+	t.tailnetItems = nil
+	t.tailnets = nil
 	return err
 }
 
@@ -256,7 +260,9 @@ func exitToggleText(status *tsutil.IPNStatus) string {
 	return locale.Get("Enable exit node")
 }
 
-func (t *Tray) SetProfiles(ps *tsutil.ProfileStatus) {
+// SetTailnets shows a checkbox for each tailnet, checked if it's
+// connected. Clicking one calls OnTailnetToggle with its ID.
+func (t *Tray) SetTailnets(tailnets []Tailnet) {
 	if t == nil {
 		return
 	}
@@ -267,105 +273,76 @@ func (t *Tray) SetProfiles(ps *tsutil.ProfileStatus) {
 	if t.item == nil {
 		return
 	}
-	t.syncAccounts(ps)
+	t.syncTailnets(tailnets)
 }
 
-func (t *Tray) syncAccounts(ps *tsutil.ProfileStatus) {
-	var profiles []ipn.LoginProfile
-	var active ipn.ProfileID
-	if ps != nil {
-		profiles = ps.Profiles
-		active = ps.Profile.ID
+func (t *Tray) syncTailnets(tailnets []Tailnet) {
+	ids := make([]string, len(tailnets))
+	for i, tn := range tailnets {
+		ids[i] = tn.ID
 	}
-	if len(profiles) <= 1 {
-		t.clearAccountMenu()
+	if !slices.Equal(t.tailnetIDs, ids) {
+		t.rebuildTailnets(tailnets, ids)
 		return
 	}
-
-	ids := make([]ipn.ProfileID, len(profiles))
-	for i, p := range profiles {
-		ids[i] = p.ID
-	}
-	if t.accountItem == nil || !slices.Equal(t.accountIDs, ids) {
-		t.rebuildAccountMenu(profiles, active, ids)
-		return
-	}
-	for _, p := range profiles {
-		label := escapeMnemonics(profileName(p))
-		if t.profileNames[p.ID] == label {
+	for _, tn := range tailnets {
+		if t.tailnets[tn.ID] == tn {
 			continue
 		}
-		t.profileItems[p.ID].SetProps(tray.MenuItemLabel(label))
-		t.profileNames[p.ID] = label
+		t.tailnetItems[tn.ID].SetProps(
+			tray.MenuItemLabel(escapeMnemonics(tn.Name)),
+			tray.MenuItemToggleState(toggleState(tn.Connected)),
+		)
+		t.tailnets[tn.ID] = tn
 	}
 }
 
-func (t *Tray) clearAccountMenu() {
-	if t.accountItem != nil {
-		t.accountItem.Remove()
-		t.accountItem = nil
+func (t *Tray) rebuildTailnets(tailnets []Tailnet, ids []string) {
+	for _, item := range t.tailnetItems {
+		item.Remove()
 	}
-	t.profileItems = make(map[ipn.ProfileID]*tray.MenuItem)
-	t.profileNames = make(map[ipn.ProfileID]string)
-	t.accountIDs = nil
-	t.activeID = ""
-}
+	t.tailnetItems = make(map[string]*tray.MenuItem, len(tailnets))
+	t.tailnets = make(map[string]Tailnet, len(tailnets))
+	t.tailnetIDs = ids
 
-func (t *Tray) rebuildAccountMenu(profiles []ipn.LoginProfile, active ipn.ProfileID, ids []ipn.ProfileID) {
-	if t.accountItem == nil {
-		root := t.item.Menu()
-		t.accountItem, _ = root.AddChild(tray.MenuItemLabel(locale.Get("Switch account")))
-	} else {
-		for _, item := range t.profileItems {
-			item.Remove()
+	root := t.item.Menu()
+	if len(tailnets) == 0 {
+		if t.tailnetSep != nil {
+			t.tailnetSep.Remove()
+			t.tailnetSep = nil
+		}
+		return
+	}
+	if t.tailnetSep == nil {
+		t.tailnetSep, _ = root.AddChild(tray.MenuItemType(tray.Separator))
+		if t.quitSep != nil {
+			t.tailnetSep.MoveBefore(t.quitSep)
 		}
 	}
 
-	t.profileItems = make(map[ipn.ProfileID]*tray.MenuItem, len(profiles))
-	t.profileNames = make(map[ipn.ProfileID]string, len(profiles))
-	var activeID ipn.ProfileID
-	for _, p := range profiles {
-		id := p.ID
-		label := escapeMnemonics(profileName(p))
-		state := tray.Off
-		if id == active {
-			state = tray.On
-			activeID = id
-		}
-		child, _ := t.accountItem.AddChild(
-			tray.MenuItemLabel(label),
-			tray.MenuItemToggleType(tray.Radio),
-			tray.MenuItemToggleState(state),
+	for _, tn := range tailnets {
+		id := tn.ID
+		child, _ := root.AddChild(
+			tray.MenuItemLabel(escapeMnemonics(tn.Name)),
+			tray.MenuItemToggleType(tray.Checkmark),
+			tray.MenuItemToggleState(toggleState(tn.Connected)),
 			handler(func() {
-				if t.OnProfileSwitch != nil {
-					t.OnProfileSwitch(id)
+				if t.OnTailnetToggle != nil {
+					t.OnTailnetToggle(id)
 				}
 			}),
 		)
-		t.profileItems[id] = child
-		t.profileNames[id] = label
+		if t.quitSep != nil {
+			child.MoveBefore(t.quitSep)
+		}
+		t.tailnetItems[id] = child
+		t.tailnets[id] = tn
 	}
-	if t.quitSep != nil {
-		t.accountItem.MoveBefore(t.quitSep)
-	}
-	t.accountIDs = ids
-	t.activeID = activeID
 }
 
-func (t *Tray) SetActiveProfile(id ipn.ProfileID) {
-	if t == nil {
-		return
+func toggleState(on bool) tray.MenuToggleState {
+	if on {
+		return tray.On
 	}
-
-	t.m.Lock()
-	defer t.m.Unlock()
-
-	if t.profileItems[id] == nil || id == t.activeID {
-		return
-	}
-	if old := t.profileItems[t.activeID]; old != nil {
-		old.SetProps(tray.MenuItemToggleState(tray.Off))
-	}
-	t.profileItems[id].SetProps(tray.MenuItemToggleState(tray.On))
-	t.activeID = id
+	return tray.Off
 }

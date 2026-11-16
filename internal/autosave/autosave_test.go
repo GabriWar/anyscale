@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"deedles.dev/trayscale/internal/autosave"
+	"github.com/gabriwar/anyscale/internal/autosave"
 	"github.com/stretchr/testify/require"
 	"tailscale.com/client/tailscale/apitype"
 )

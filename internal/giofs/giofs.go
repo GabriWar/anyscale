@@ -10,7 +10,7 @@ import (
 
 	"codeberg.org/puregotk/puregotk/v4/gio"
 	"codeberg.org/puregotk/puregotk/v4/gobject"
-	"deedles.dev/trayscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
 )
 
 type gioFS struct {

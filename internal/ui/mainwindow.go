@@ -13,16 +13,13 @@ import (
 
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gio"
-	"codeberg.org/puregotk/puregotk/v4/glib"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gobj"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/listmodels"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/metadata"
-	"deedles.dev/trayscale/internal/peersearch"
-	"deedles.dev/trayscale/internal/tsutil"
-	"tailscale.com/ipn"
+	"github.com/gabriwar/anyscale/internal/gobj"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/listmodels"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/peersearch"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"tailscale.com/tailcfg"
 )
 
@@ -55,11 +52,16 @@ type MainWindow struct {
 	PeerSearchButton *gtk.ToggleButton
 	PeerSearchBar    *gtk.SearchBar
 	PeerSearchEntry  *gtk.SearchEntry
-	PeersSidebar     *adw.ViewSwitcherSidebar
+	PeerList         *gtk.ListBox
 	PeersStack       *adw.ViewStack
 	WorkSpinner      *adw.Spinner
-	ProfileDropDown  *gtk.DropDown
 	PageMenuButton   *gtk.MenuButton
+
+	TailnetSplit       *adw.OverlaySplitView
+	TailnetsButton     *gtk.ToggleButton
+	TailnetTitle       *adw.WindowTitle
+	TailnetList        *gtk.ListBox
+	TailnetPlaceholder *adw.StatusPage `gtk:"-"`
 
 	pages       map[string]Page
 	stackPages  map[string]*adw.ViewStackPage // Each holds a reference.
@@ -67,11 +69,8 @@ type MainWindow struct {
 	peerQuery   string
 	ipn         *tsutil.IPNStatus
 
-	profiles         []ipn.LoginProfile
-	profileModel     *gtk.StringList
-	profileSortModel *gtk.SortListModel
-	updatingProfiles bool
-	activeProfileID  ipn.ProfileID
+	tailnets tailnetList
+	peerList peerList
 }
 
 func NewMainWindow(app *App) *MainWindow {
@@ -100,13 +99,8 @@ func NewMainWindow(app *App) *MainWindow {
 			removeActionGroup(&win.MainWindow.Widget, "peer")
 		}
 		win.PageMenuButton.SetSensitive(actions != nil)
+		win.selectPeerRow()
 	})
-
-	win.profileModel = gtk.NewStringList(nil)
-	// gtk_sort_list_model_new takes ownership of the model and sorter.
-	win.profileModel.Ref()
-	win.profileSortModel = gtk.NewSortListModel(win.profileModel, &newStringSorter().Sorter)
-	win.ProfileDropDown.SetModel(win.profileSortModel)
 
 	gutil.Connect(win.StatusSwitch, win.StatusSwitch.ConnectStateSet, func(_ gtk.Switch, s bool) bool {
 		if s == win.StatusSwitch.GetState() {
@@ -116,54 +110,10 @@ func NewMainWindow(app *App) *MainWindow {
 		return true
 	})
 
-	gutil.ConnectNotify(win.ProfileDropDown, "selected-item", func() {
-		if win.updatingProfiles {
-			return
-		}
-
-		sel := win.ProfileDropDown.GetSelectedItem()
-		if sel == nil {
-			return
-		}
-		defer sel.Unref()
-		obj, ok := gutil.Cast[gtk.StringObject](sel, gtk.StringObjectGLibType())
-		if !ok {
-			return
-		}
-
-		item := obj.GetString()
-		index := slices.IndexFunc(win.profiles, func(p ipn.LoginProfile) bool {
-			// TODO: Find a reasonable way to do this by profile ID instead.
-			return p.Name == item
-		})
-		if index < 0 {
-			slog.Error("selected unknown profile", "name", item)
-			return
-		}
-		profile := win.profiles[index]
-
-		if profile.ID == win.activeProfileID {
-			return
-		}
-
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-
-		err := tsutil.SwitchProfile(ctx, profile.ID)
-		if err != nil {
-			slog.Error("failed to switch profiles", "err", err, "id", profile.ID, "name", profile.Name)
-			return
-		}
-		<-app.poller.Poll()
-	})
-
-	contentVariant := glib.NewVariantString("content").RefSink()
-	gutil.Connect(win.PeersSidebar, win.PeersSidebar.ConnectActivated, func(adw.ViewSwitcherSidebar) {
-		win.SplitView.ActivateActionVariant("navigation.push", contentVariant)
-	})
-	gutil.OnFinalize(win.PeersSidebar, contentVariant.Unref)
+	win.initPeerList()
 
 	win.initPeerSearch()
+	win.initTailnets()
 
 	return win
 }
@@ -262,8 +212,8 @@ func (win *MainWindow) Dispose() {
 		vp.Unref()
 	}
 	clear(win.stackPages)
-	win.profileModel.Unref()
-	win.profileSortModel.Unref()
+	win.disposeTailnets()
+	win.disposePeerList()
 }
 
 func (win *MainWindow) Update(status tsutil.Status) {
@@ -277,9 +227,6 @@ func (win *MainWindow) Update(status tsutil.Status) {
 		if self, ok := win.pages["self"].(*SelfPage); ok {
 			self.UpdateFiles(status)
 		}
-
-	case *tsutil.ProfileStatus:
-		win.updateProfiles(status)
 	}
 }
 
@@ -325,6 +272,7 @@ func (win *MainWindow) applyLayout(status *tsutil.IPNStatus) {
 		win.updateStackPages(status)
 	}
 	win.applySections(layout)
+	win.syncPeerList(layout)
 }
 
 func (win *MainWindow) updateStackPages(status *tsutil.IPNStatus) {
@@ -590,31 +538,15 @@ func (win *MainWindow) applySections(layout []sidebarPage) {
 	}
 }
 
-func (win *MainWindow) updateProfiles(status *tsutil.ProfileStatus) {
-	win.updatingProfiles = true
-	defer func() { win.updatingProfiles = false }()
-
-	win.profiles = status.Profiles
-	win.activeProfileID = status.Profile.ID
-
-	listmodels.UpdateStrings(win.profileModel, func(yield func(string) bool) {
-		for _, profile := range status.Profiles {
-			name := profile.Name
-			if metadata.Private {
-				name = "profile@example.com"
-			}
-			if !yield(name) {
-				return
-			}
-		}
-	})
-
-	profileIndex, ok := listmodels.Index[gtk.StringObject](win.profileSortModel, gtk.StringObjectGLibType(), func(obj *gtk.StringObject) bool {
-		return obj.GetString() == status.Profile.Name
-	})
-	if ok {
-		win.ProfileDropDown.SetSelected(profileIndex)
+// ResetPeers removes every page, as when another tailnet is selected,
+// so that the next status starts from scratch.
+func (win *MainWindow) ResetPeers() {
+	win.PeerSearchBar.SetSearchMode(false)
+	for name, page := range win.pages {
+		win.removePage(name, page)
 	}
+	win.ipn = nil
+	win.syncPeerList(nil)
 }
 
 func (win *MainWindow) Toast(msg string) {

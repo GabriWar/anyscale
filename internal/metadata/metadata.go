@@ -11,10 +11,10 @@ import (
 	"slices"
 	"strings"
 
-	"deedles.dev/trayscale"
+	"github.com/gabriwar/anyscale"
 )
 
-const AppID = "dev.deedles.Trayscale"
+const AppID = "io.github.gabriwar.Anyscale"
 
 var Private = os.Getenv("TRAYSCALE_PRIVATE") == "1"
 
@@ -38,7 +38,7 @@ func License() string {
 }
 
 func ReleaseNotes() (string, string) {
-	file := must(trayscale.Assets().Open(AppID + ".metainfo.xml"))
+	file := must(anyscale.Assets().Open("data/" + AppID + ".metainfo.xml"))
 	defer file.Close()
 
 	var release string
@@ -86,7 +86,7 @@ func must[T any](v T, err error) T {
 // a string. It panics if there are any errors.
 func readAssetString(file string) string {
 	var str strings.Builder
-	f := must(trayscale.Assets().Open(file))
+	f := must(anyscale.Assets().Open(file))
 	defer f.Close()
 	must(io.Copy(&str, f))
 	return str.String()

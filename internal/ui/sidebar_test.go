@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"tailscale.com/ipn"
 	"tailscale.com/net/tsaddr"
 	"tailscale.com/tailcfg"

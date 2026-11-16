@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"codeberg.org/puregotk/puregotk/v4/gio"
-	"deedles.dev/trayscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
 )
 
 func TestFileStrings(t *testing.T) {

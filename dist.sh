@@ -2,9 +2,9 @@
 
 set -e
 
-# This script is intended to help with correct packaging of Trayscale.
+# This script is intended to help with correct packaging of Anyscale.
 # It is not intended for general usage. If you'd like to install
-# Trayscale manually, you can read through the installation section of
+# Anyscale manually, you can read through the installation section of
 # this script to see where various files are put.
 
 _usage() {
@@ -17,9 +17,9 @@ _usage() {
 	echo "    Usage: install <destination directory>"
 	echo "  install-data: install everything except the binary into a directory tree"
 	echo "    Usage: install-data <destination directory>"
-	echo "  install-macos: install Trayscale for macOS (Apple Silicon)"
+	echo "  install-macos: install Anyscale for macOS (Apple Silicon)"
 	echo "    Usage: install-macos"
-	echo "  uninstall-macos: uninstall Trayscale from macOS"
+	echo "  uninstall-macos: uninstall Anyscale from macOS"
 	echo "    Usage: uninstall-macos"
 	exit 2
 }
@@ -31,7 +31,7 @@ _build() {
 	fi
 
 	echo "Building $version"
-	go build -v -trimpath -ldflags="-w -s -X 'deedles.dev/trayscale/internal/metadata.version=$version'" -o trayscale ./cmd/trayscale
+	go build -v -trimpath -ldflags="-w -s -X 'github.com/gabriwar/anyscale/internal/metadata.version=$version'" -o anyscale ./cmd/anyscale
 }
 
 _install() {
@@ -40,7 +40,7 @@ _install() {
 		_usage
 	fi
 
-	install -D -t "$dstdir/bin" trayscale
+	install -D -t "$dstdir/bin" anyscale
 	_install_data "$dstdir"
 }
 
@@ -51,10 +51,10 @@ _install_data() {
 	fi
 
 	echo "Installing to $dstdir"
-	install -Dm644 -t "$dstdir/share/icons/hicolor/256x256/apps" dev.deedles.Trayscale.png
-	install -Dm644 -t "$dstdir/share/applications" dev.deedles.Trayscale.desktop
-	install -Dm644 -t "$dstdir/share/metainfo" dev.deedles.Trayscale.metainfo.xml
-	install -Dm644 -t "$dstdir/share/glib-2.0/schemas" dev.deedles.Trayscale.gschema.xml
+	install -Dm644 -t "$dstdir/share/icons/hicolor/256x256/apps" data/io.github.gabriwar.Anyscale.png
+	install -Dm644 -t "$dstdir/share/applications" data/io.github.gabriwar.Anyscale.desktop
+	install -Dm644 -t "$dstdir/share/metainfo" data/io.github.gabriwar.Anyscale.metainfo.xml
+	install -Dm644 -t "$dstdir/share/glib-2.0/schemas" data/io.github.gabriwar.Anyscale.gschema.xml
 }
 
 _install_macos() {
@@ -65,34 +65,34 @@ _install_macos() {
 	
 	echo "Installing for macOS"
 	# Create wrapper script to set up environment
-	cat > trayscale.wrapper << EOF
+	cat > anyscale.wrapper << EOF
 #!/bin/bash
 export XDG_DATA_DIRS="$HOMEBREW_PREFIX/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
-exec "$HOMEBREW_PREFIX/libexec/trayscale"
+exec "$HOMEBREW_PREFIX/libexec/anyscale"
 EOF
-	chmod +x trayscale.wrapper
+	chmod +x anyscale.wrapper
 	
 	# Install binary to libexec (actual executable)
 	install -d "$HOMEBREW_PREFIX/libexec"
-	install trayscale "$HOMEBREW_PREFIX/libexec/"
+	install anyscale "$HOMEBREW_PREFIX/libexec/"
 	
 	# Install wrapper to bin (what users will run)
-	install trayscale.wrapper "$HOMEBREW_PREFIX/bin/trayscale"
-	rm trayscale.wrapper
+	install anyscale.wrapper "$HOMEBREW_PREFIX/bin/anyscale"
+	rm anyscale.wrapper
 	
 	schema_dir="$HOMEBREW_PREFIX/share/glib-2.0/schemas"
 	install -d "$schema_dir"
-	install -m644 dev.deedles.Trayscale.gschema.xml "$schema_dir/"
+	install -m644 data/io.github.gabriwar.Anyscale.gschema.xml "$schema_dir/"
 	glib-compile-schemas "$schema_dir"
 	
 	share_dir="$HOMEBREW_PREFIX/share"
 	install -d "$share_dir/applications"
-	install -m644 dev.deedles.Trayscale.desktop "$share_dir/applications/"
+	install -m644 data/io.github.gabriwar.Anyscale.desktop "$share_dir/applications/"
 	
 	install -d "$share_dir/icons/hicolor/256x256/apps"
-	install -m644 dev.deedles.Trayscale.png "$share_dir/icons/hicolor/256x256/apps/"
+	install -m644 data/io.github.gabriwar.Anyscale.png "$share_dir/icons/hicolor/256x256/apps/"
 	
-	echo "Installation complete. You can now run 'trayscale' from anywhere"
+	echo "Installation complete. You can now run 'anyscale' from anywhere"
 }
 
 _uninstall_macos() {
@@ -102,16 +102,16 @@ _uninstall_macos() {
 	fi
 
 	echo "Uninstalling from macOS"
-	rm -f "$HOMEBREW_PREFIX/bin/trayscale"
-	rm -f "$HOMEBREW_PREFIX/libexec/trayscale"
+	rm -f "$HOMEBREW_PREFIX/bin/anyscale"
+	rm -f "$HOMEBREW_PREFIX/libexec/anyscale"
 	
 	schema_dir="$HOMEBREW_PREFIX/share/glib-2.0/schemas"
-	rm -f "$schema_dir/dev.deedles.Trayscale.gschema.xml"
+	rm -f "$schema_dir/io.github.gabriwar.Anyscale.gschema.xml"
 	glib-compile-schemas "$schema_dir"
 	
 	share_dir="$HOMEBREW_PREFIX/share"
-	rm -f "$share_dir/applications/dev.deedles.Trayscale.desktop"
-	rm -f "$share_dir/icons/hicolor/256x256/apps/dev.deedles.Trayscale.png"
+	rm -f "$share_dir/applications/io.github.gabriwar.Anyscale.desktop"
+	rm -f "$share_dir/icons/hicolor/256x256/apps/io.github.gabriwar.Anyscale.png"
 	
 	echo "Uninstallation complete"
 }

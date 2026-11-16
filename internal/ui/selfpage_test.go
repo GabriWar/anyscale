@@ -4,7 +4,7 @@ import (
 	"net/netip"
 	"testing"
 
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"github.com/stretchr/testify/require"
 	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"

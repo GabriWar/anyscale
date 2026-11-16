@@ -5,7 +5,7 @@ import (
 
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gio"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"
 )

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/listmodels"
+	"github.com/gabriwar/anyscale/internal/listmodels"
 )
 
 // once returns a sequence over vs that fails the test if it is read twice.

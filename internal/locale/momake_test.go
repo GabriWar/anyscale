@@ -3,7 +3,7 @@ package locale_test
 import (
 	"testing"
 
-	"deedles.dev/trayscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/locale"
 	"github.com/leonelquinteros/gotext"
 	"github.com/stretchr/testify/require"
 )

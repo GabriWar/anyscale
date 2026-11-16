@@ -126,10 +126,10 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	fakeSocket = filepath.Join(dir, "tailscaled.sock")
-	localClient.Socket, localClient.UseSocketOnly = fakeSocket, true
+	defaultClient.lc.Socket, defaultClient.lc.UseSocketOnly = fakeSocket, true
 	// Each test serves the socket with its own server and closes it
 	// afterward, so a pooled connection would outlive its server.
-	localClient.Transport = &http.Transport{
+	defaultClient.lc.Transport = &http.Transport{
 		DisableKeepAlives: true,
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return new(net.Dialer).DialContext(ctx, "unix", fakeSocket)

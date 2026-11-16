@@ -8,10 +8,10 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/adw"
 	"codeberg.org/puregotk/puregotk/v4/gio"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/metadata"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/metadata"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"tailscale.com/ipn"
 )
 
@@ -45,7 +45,7 @@ func (a *App) initSettings(ctx context.Context) {
 			})
 
 		case "polling-interval":
-			a.poller.SetInterval() <- a.getInterval()
+			a.currentPoller().SetInterval() <- a.getInterval()
 
 		case "taildrop-auto-save", "taildrop-auto-save-dir":
 			gutil.IdleAdd(func() {
@@ -115,7 +115,7 @@ func (a *App) promptControlServer(ctx context.Context, current string) {
 			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 			defer cancel()
 
-			err := tsutil.SetControlURL(ctx, val)
+			err := a.client().SetControlURL(ctx, val)
 			if err != nil {
 				slog.Error("update control plane server URL", "err", err, "url", val)
 				gutil.IdleAdd(func() {
@@ -125,7 +125,7 @@ func (a *App) promptControlServer(ctx context.Context, current string) {
 				})
 				return
 			}
-			<-a.poller.Poll()
+			<-a.currentPoller().Poll()
 		}()
 	})
 }
@@ -219,14 +219,18 @@ func (a *App) showPreferences() {
 func (a *App) showAbout() {
 	dialog := adw.NewAboutDialog()
 	defer dialog.Unref() // Presented dialogs keep themselves alive.
-	dialog.SetDeveloperName("DeedleFake")
+	dialog.SetDeveloperName("gabriwar")
 	dialog.SetCopyright("Copyright (c) 2025 DeedleFake")
 	dialog.SetLicense(metadata.License())
 	dialog.SetLicenseType(gtk.LicenseCustomValue)
 	dialog.SetApplicationIcon(metadata.AppID)
-	dialog.SetApplicationName("Trayscale")
-	dialog.SetWebsite("https://github.com/DeedleFake/trayscale")
-	dialog.SetIssueUrl("https://github.com/DeedleFake/trayscale/issues")
+	dialog.SetApplicationName("Anyscale")
+	dialog.SetComments(locale.Get("Anyscale is a fork of Trayscale that uses tailmix to connect to several tailnets at once."))
+	dialog.AddCreditSection(locale.Get("Based on"), []string{
+		"Trayscale by DeedleFake https://github.com/DeedleFake/trayscale",
+		"tailmix by Maisem Ali https://github.com/maisem/tailmix",
+	})
+	dialog.AddLegalSection("tailmix", "Copyright (c) 2026 Maisem Ali", gtk.LicenseBsd3Value, "")
 
 	rnv, rn := metadata.ReleaseNotes()
 	dialog.SetReleaseNotesVersion(rnv)

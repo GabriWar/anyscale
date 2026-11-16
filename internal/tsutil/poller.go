@@ -26,6 +26,10 @@ import (
 // It is a race condition to change any exported fields of Poller
 // while Run is running.
 type Poller struct {
+	// Client is the LocalAPI client to poll. If it is nil, tailscaled's
+	// default socket is used.
+	Client *Client
+
 	// Interval is the default interval to use for polling.
 	//
 	// If it is a zero, a non-zero default will be used.
@@ -52,6 +56,13 @@ type Poller struct {
 	interval chan time.Duration
 	running  chan bool
 	resend   chan struct{}
+}
+
+func (p *Poller) client() *Client {
+	if p.Client != nil {
+		return p.Client
+	}
+	return &defaultClient
 }
 
 func (p *Poller) init() {
@@ -131,9 +142,9 @@ func (p *Poller) run(ctx context.Context, up bool) error {
 		return p.setRunning(ctx, up)
 	}
 	if up {
-		return Start(ctx)
+		return p.client().Start(ctx)
 	}
-	return Stop(ctx)
+	return p.client().Stop(ctx)
 }
 
 func (p *Poller) watchIPN(ctx context.Context) {
@@ -211,7 +222,7 @@ func (p *Poller) watchIPNOnce(ctx context.Context, publish func(*IPNStatus) bool
 		ipn.NotifyInitialStatus |
 		ipn.NotifyPeerChanges
 
-	watcher, err := localClient.WatchIPNBus(ctx, watcherOpts)
+	watcher, err := p.client().lc.WatchIPNBus(ctx, watcherOpts)
 	if err != nil {
 		return false, err
 	}
@@ -242,7 +253,7 @@ func (p *Poller) watchIPNOnce(ctx context.Context, publish func(*IPNStatus) bool
 
 			dirty, targetsDirty := s.applyNotify(&notify)
 			if targetsDirty {
-				s.refreshFileTargets(ctx)
+				s.refreshFileTargets(ctx, p.client())
 			}
 
 			// TODO: Handle health warnings.
@@ -278,7 +289,7 @@ func (p *Poller) watchIPNOnce(ctx context.Context, publish func(*IPNStatus) bool
 
 func (p *Poller) watchFiles(ctx context.Context, n *notifier) {
 	for {
-		files, err := WaitingFiles(ctx)
+		files, err := p.client().WaitingFiles(ctx)
 		if err != nil && !errors.Is(err, taildrop.ErrNoTaildrop) {
 			if ctx.Err() != nil {
 				return
@@ -301,7 +312,7 @@ func (p *Poller) watchFiles(ctx context.Context, n *notifier) {
 
 func (p *Poller) watchProfiles(ctx context.Context, n *notifier) {
 	for {
-		profile, profiles, err := GetProfileStatus(ctx)
+		profile, profiles, err := p.client().GetProfileStatus(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				return
@@ -507,7 +518,7 @@ func (s *IPNStatus) applyPeersRemoved(ids []tailcfg.NodeID) (removed bool) {
 	return removed
 }
 
-func (s *IPNStatus) refreshFileTargets(ctx context.Context) {
+func (s *IPNStatus) refreshFileTargets(ctx context.Context, c *Client) {
 	// This is a lot longer than it probably should be. It's basically
 	// just to make sure that the poller doesn't get completely stuck. If
 	// this is getting hit, though, the UI is going to be updating
@@ -515,7 +526,7 @@ func (s *IPNStatus) refreshFileTargets(ctx context.Context) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	targets, err := FileTargets(ctx)
+	targets, err := c.FileTargets(ctx)
 	if err != nil {
 		slog.Error("failed to get file targets", "err", err)
 		return

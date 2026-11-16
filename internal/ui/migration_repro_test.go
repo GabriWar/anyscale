@@ -17,11 +17,11 @@ import (
 	"codeberg.org/puregotk/puregotk/v4/glib"
 	"codeberg.org/puregotk/puregotk/v4/gobject"
 	"codeberg.org/puregotk/puregotk/v4/gtk"
-	"deedles.dev/trayscale"
-	"deedles.dev/trayscale/internal/giofs"
-	"deedles.dev/trayscale/internal/gutil"
-	"deedles.dev/trayscale/internal/locale"
-	"deedles.dev/trayscale/internal/tsutil"
+	"github.com/gabriwar/anyscale"
+	"github.com/gabriwar/anyscale/internal/giofs"
+	"github.com/gabriwar/anyscale/internal/gutil"
+	"github.com/gabriwar/anyscale/internal/locale"
+	"github.com/gabriwar/anyscale/internal/tsutil"
 	"tailscale.com/ipn"
 )
 
@@ -35,7 +35,7 @@ func objectRefCount(obj gobject.Ptr) uint32 {
 func TestUpdateDoesNotLeakExitNodeAction(t *testing.T) {
 	requireGTK(t)
 
-	a := &App{operatorCheck: true, online: true}
+	a := &App{operatorCheck: true}
 	a.app = adw.NewApplication("dev.deedles.Trayscale.test.exit-node", gio.GApplicationNonUniqueValue)
 	defer a.app.Unref()
 
@@ -81,9 +81,6 @@ func TestRestackReleasesReplacedStackPage(t *testing.T) {
 		stackPages: make(map[string]*adw.ViewStackPage),
 		PeersStack: adw.NewViewStack(),
 	}
-	win.profileModel = gtk.NewStringList(nil)
-	win.profileModel.Ref()
-	win.profileSortModel = gtk.NewSortListModel(win.profileModel, &newStringSorter().Sorter)
 	aBox := gtk.NewBox(gtk.OrientationVerticalValue, 0)
 	bBox := gtk.NewBox(gtk.OrientationVerticalValue, 0)
 	pageA := &stackStub{w: &aBox.Widget}
@@ -160,7 +157,7 @@ func TestHelpOmitsCatalogHeader(t *testing.T) {
 	requireGTK(t)
 	locale.SanitizeEnvironment()
 	t.Setenv("LANGUAGE", "en")
-	po, err := fs.Sub(trayscale.Assets(), "po")
+	po, err := fs.Sub(anyscale.Assets(), "po")
 	if err != nil {
 		t.Fatal(err)
 	}

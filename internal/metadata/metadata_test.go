@@ -3,7 +3,7 @@ package metadata_test
 import (
 	"testing"
 
-	"deedles.dev/trayscale/internal/metadata"
+	"github.com/gabriwar/anyscale/internal/metadata"
 	"github.com/stretchr/testify/require"
 )
 
