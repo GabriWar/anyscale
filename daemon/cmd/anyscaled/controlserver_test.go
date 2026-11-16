@@ -39,7 +39,7 @@ func TestControlServerAllowsReadsAndAuthorizesMutations(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	backend := &controlServerTestBackend{}
-	server, err := startControlServer(ctx, socketDir, backend)
+	server, err := startControlServer(ctx, socketDir, backend, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,6 +86,7 @@ func TestRequireRootForMutations(t *testing.T) {
 		name       string
 		method     string
 		uid        string
+		operator   bool
 		wantStatus int
 		wantCalled bool
 	}{
@@ -109,6 +110,14 @@ func TestRequireRootForMutations(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
+			name:       "operator group mutation",
+			method:     http.MethodPost,
+			uid:        "1000",
+			operator:   true,
+			wantStatus: http.StatusNoContent,
+			wantCalled: true,
+		},
+		{
 			name:       "mutation without credentials",
 			method:     http.MethodDelete,
 			wantStatus: http.StatusForbidden,
@@ -117,10 +126,11 @@ func TestRequireRootForMutations(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			called := false
-			handler := requireRootForMutations(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			isOperator := func(uid string) bool { return test.operator && uid == "1000" }
+			handler := requireMutationAccess(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				called = true
 				w.WriteHeader(http.StatusNoContent)
-			}))
+			}), isOperator)
 			request := httptest.NewRequest(test.method, "/v1/test", nil)
 			if test.uid != "" {
 				request = request.WithContext(context.WithValue(

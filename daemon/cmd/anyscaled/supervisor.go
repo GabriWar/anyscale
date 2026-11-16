@@ -32,18 +32,21 @@ import (
 )
 
 type daemonConfig struct {
-	Mode         string
-	TUNName      string
-	SocketDir    string
-	SOCKSAddr    string
-	Verbose      bool
-	LogUpload    bool
-	LogUploadURL string
-	Stderr       io.Writer
-	Updater      binaryUpdater
-	Version      string
-	UpdateRoot   string
-	UpdateDelay  func(bool) time.Duration
+	// OperatorGroup names a group whose members may make control API
+	// mutations without being root. Empty means root only.
+	OperatorGroup string
+	Mode          string
+	TUNName       string
+	SocketDir     string
+	SOCKSAddr     string
+	Verbose       bool
+	LogUpload     bool
+	LogUploadURL  string
+	Stderr        io.Writer
+	Updater       binaryUpdater
+	Version       string
+	UpdateRoot    string
+	UpdateDelay   func(bool) time.Duration
 }
 
 type managedProfile struct {
@@ -143,7 +146,7 @@ func (s *supervisor) Run(ctx context.Context) (retErr error) {
 		// retry after absent leases finish their grace period.
 		fmt.Fprintln(s.cfg.Stderr, "effective IP pool exhausted; waiting for a reconciliation retry")
 	}
-	control, err := startControlServer(s.ctx, s.cfg.SocketDir, s)
+	control, err := startControlServer(s.ctx, s.cfg.SocketDir, s, s.cfg.OperatorGroup)
 	if err != nil {
 		s.mu.Unlock()
 		return errors.Join(err, s.close())

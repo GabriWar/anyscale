@@ -102,7 +102,8 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	logUpload := fs.Bool("log-upload", false, "opt in to remote per-profile logtail uploads")
 	logUploadURL := fs.String("log-upload-url", "", "replace the remote logtail upload base URL (requires -log-upload)")
 	updateRoot := fs.String("update-root", installedUpdateRoot(os.Args[0]), "root of a direct installation eligible for automatic updates")
-	autoUpdate := fs.Bool("auto-update", true, "automatically install stable tailmix updates")
+	autoUpdate := fs.Bool("auto-update", false, "automatically install stable tailmix updates (anyscale pins tailmix, so this is off by default)")
+	operatorGroup := fs.String("operator-group", "", "group whose members may change tailnets without root")
 	showVersion := fs.Bool("version", false, "print version and exit")
 	registerProfileFlags(fs, &profiles)
 	if err := fs.Parse(args); err != nil {
@@ -165,18 +166,19 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		updater = tailmixupdate.Client{Root: *updateRoot}
 	}
 	supervisor := newSupervisor(store, st, runtimeProfiles, daemonConfig{
-		Mode:         *mode,
-		TUNName:      *tunName,
-		SocketDir:    *socketDir,
-		SOCKSAddr:    *socksAddr,
-		Verbose:      *verbose,
-		LogUpload:    *logUpload,
-		LogUploadURL: *logUploadURL,
-		Stderr:       stderr,
-		Updater:      updater,
-		Version:      tailmixversion.GetMeta().Short,
-		UpdateRoot:   *updateRoot,
-		UpdateDelay:  defaultUpdateDelay,
+		Mode:          *mode,
+		TUNName:       *tunName,
+		SocketDir:     *socketDir,
+		OperatorGroup: *operatorGroup,
+		SOCKSAddr:     *socksAddr,
+		Verbose:       *verbose,
+		LogUpload:     *logUpload,
+		LogUploadURL:  *logUploadURL,
+		Stderr:        stderr,
+		Updater:       updater,
+		Version:       tailmixversion.GetMeta().Short,
+		UpdateRoot:    *updateRoot,
+		UpdateDelay:   defaultUpdateDelay,
 	})
 	err = supervisor.Run(ctx)
 	var restart *updateRestart
