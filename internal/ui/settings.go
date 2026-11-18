@@ -231,6 +231,7 @@ func (a *App) showAbout() {
 		"tailmix by Maisem Ali https://github.com/maisem/tailmix",
 	})
 	dialog.AddLegalSection("tailmix", "Copyright (c) 2026 Maisem Ali", gtk.LicenseBsd3Value, "")
+	dialog.AddLegalSection("Tailscale", "", gtk.LicenseCustomValue, locale.Get("Anyscale is an independent project. It is not affiliated with, sponsored by or endorsed by Tailscale Inc. Tailscale is a registered trademark of Tailscale Inc."))
 
 	rnv, rn := metadata.ReleaseNotes()
 	dialog.SetReleaseNotesVersion(rnv)

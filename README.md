@@ -64,6 +64,11 @@ Known issues
 * The daemon decides which routes and DNS to use, so the "accept routes" and "accept DNS" switches are hidden.
 * Serve can't be reached from this machine itself, only from other devices.
 
+Not affiliated with Tailscale
+-----------------------------
+
+Anyscale is an independent project. It is not affiliated with, sponsored by or endorsed by Tailscale Inc. Tailscale is a registered trademark of Tailscale Inc.
+
 Credits
 -------
 
