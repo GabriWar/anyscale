@@ -3,12 +3,18 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/user"
+	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"tailscale.com/ipn"
 	"tailscale.com/safesocket"
 )
 
@@ -155,5 +161,59 @@ func TestRequireRootForMutations(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAdderOperatorAfterSudoAndEnable checks that root naming an
+// operator, as anyscalectl does under sudo, makes that user the operator
+// once a profile added disabled is enabled.
+func TestAdderOperatorAfterSudoAndEnable(t *testing.T) {
+	me, err := user.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := os.MkdirTemp("", "anyscaled-op")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	sock := filepath.Join(dir, "work.sock")
+	profile := controlapi.Profile{ID: "w", Name: "work", LocalAPISocket: sock}
+
+	handler := makeAdderOperator(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		json.NewEncoder(w).Encode(profile)
+	}), dir)
+	post := func(path, body string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+		req = req.WithContext(context.WithValue(req.Context(), peerUIDContextKey{}, "0"))
+		handler.ServeHTTP(httptest.NewRecorder(), req)
+	}
+
+	// Added disabled: no LocalAPI yet, so the operator waits.
+	post("/v1/profiles", `{"name":"work","disabled":true,"operator":"`+me.Username+`"}`)
+
+	var mu sync.Mutex
+	var operator string
+	l, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var mp ipn.MaskedPrefs
+		json.NewDecoder(r.Body).Decode(&mp)
+		mu.Lock()
+		operator = mp.OperatorUser
+		mu.Unlock()
+		json.NewEncoder(w).Encode(&mp.Prefs)
+	})}
+	go srv.Serve(l)
+	defer srv.Close()
+
+	post("/v1/profiles/by-name/work/enable", "")
+	mu.Lock()
+	defer mu.Unlock()
+	if operator != me.Username {
+		t.Fatalf("operator after enable = %q, want %q", operator, me.Username)
 	}
 }

@@ -1060,6 +1060,8 @@ func (s *Server) printAuthURLLoop() {
 		}
 		return true
 	})
+	// Log each login URL once rather than every few seconds.
+	var lastAuthURL string
 	for {
 		if s.shutdownCtx.Err() != nil {
 			return
@@ -1069,7 +1071,8 @@ func (s *Server) printAuthURLLoop() {
 			return
 		}
 		st := s.lb.StatusWithoutPeers()
-		if st.AuthURL != "" {
+		if st.AuthURL != "" && st.AuthURL != lastAuthURL {
+			lastAuthURL = st.AuthURL
 			s.logf("To start this tsnet server, restart with TS_AUTHKEY set, or go to: %s", st.AuthURL)
 		}
 		select {

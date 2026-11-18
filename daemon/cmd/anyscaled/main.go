@@ -16,7 +16,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/gaissmai/bart"
 	anyscaledns "github.com/gabriwar/anyscale/daemon/dns"
 	"github.com/gabriwar/anyscale/daemon/effectiveip"
 	"github.com/gabriwar/anyscale/daemon/hosttun"
@@ -27,6 +26,7 @@ import (
 	"github.com/gabriwar/anyscale/daemon/state"
 	anyscaleupdate "github.com/gabriwar/anyscale/daemon/update"
 	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
+	"github.com/gaissmai/bart"
 	"github.com/tailscale/wireguard-go/tun"
 	"tailscale.com/net/tsaddr"
 )

@@ -553,6 +553,7 @@ func runProfileAdd(ctx context.Context, client managementClient, args []string, 
 		StateDir: stateDir,
 		AuthKey:  authKey,
 		Disabled: disabled,
+		Operator: sudoOperator(),
 	}
 	if hostnameSet {
 		request.Hostname = hostname
@@ -1037,7 +1038,7 @@ func implicitTailscaleProfile(ctx context.Context, client managementClient, subc
 		if subcommand != "up" && subcommand != "login" {
 			return controlapi.Profile{}, usageError{`no Tailscale profiles yet; run "sudo anyscalectl ts login" to create one`}
 		}
-		created, err := client.AddProfile(ctx, controlapi.AddProfileRequest{Name: defaultProfileName})
+		created, err := client.AddProfile(ctx, controlapi.AddProfileRequest{Name: defaultProfileName, Operator: sudoOperator()})
 		if err != nil {
 			return controlapi.Profile{}, fmt.Errorf("create profile %q: %w", defaultProfileName, err)
 		}
@@ -1770,3 +1771,15 @@ exist, "anyscalectl ts login" (or "anyscalectl ts up") creates a profile named "
 All remaining arguments are passed unchanged to Tailscale's upstream CLI.
 The --socket option is owned by anyscale and cannot be overridden.
 `
+
+// sudoOperator returns the user who ran anyscalectl through sudo, who
+// becomes the operator of the profiles it adds, or "" otherwise.
+func sudoOperator() string {
+	if os.Geteuid() != 0 {
+		return ""
+	}
+	if u := os.Getenv("SUDO_USER"); u != "root" {
+		return u
+	}
+	return ""
+}

@@ -139,6 +139,10 @@ type AddProfileRequest struct {
 	Hostname string `json:"hostname,omitempty"`
 	AuthKey  string `json:"authKey,omitempty"`
 	Disabled bool   `json:"disabled,omitempty"`
+	// Operator names a user to make the Tailscale operator of the new
+	// profile. Only root may set it; for other callers that may add
+	// profiles, the operator is the caller.
+	Operator string `json:"operator,omitempty"`
 }
 
 type PatchProfileRequest struct {

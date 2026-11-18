@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 
@@ -204,7 +205,11 @@ func (m *Mux) runHostToProfiles(ctx context.Context) error {
 			_, route, err := m.mapper.Load().Outbound(pkt)
 			if err != nil {
 				m.observeDroppedOutbound(pkt)
-				m.logf("drop outbound packet: %v", err)
+				// Multicast and broadcast, such as SSDP and mDNS, never
+				// go to a tailnet, and the host sends them constantly.
+				if !isLocalScope(pkt) {
+					m.logf("drop outbound packet: %v", err)
+				}
 				packet.Release()
 				continue
 			}
@@ -370,4 +375,19 @@ func (m *Mux) runProfileToHost(ctx context.Context, profileID string, profileTun
 			return fmt.Errorf("profile %q TUN inbound channel closed", profileID)
 		}
 	}
+}
+
+// isLocalScope reports whether pkt is an IP packet to a multicast,
+// broadcast or link-local destination.
+func isLocalScope(pkt []byte) bool {
+	var dst netip.Addr
+	switch {
+	case len(pkt) >= 20 && pkt[0]>>4 == 4:
+		dst = netip.AddrFrom4([4]byte(pkt[16:20]))
+	case len(pkt) >= 40 && pkt[0]>>4 == 6:
+		dst = netip.AddrFrom16([16]byte(pkt[24:40]))
+	default:
+		return false
+	}
+	return dst.IsMulticast() || dst.IsLinkLocalUnicast() || dst == netip.AddrFrom4([4]byte{255, 255, 255, 255})
 }

@@ -401,11 +401,17 @@ func (a *App) onAppOpen(ctx context.Context, files []*gio.FileBase) {
 		}
 	}
 
+	sorted := slices.SortedFunc(options, func(o1, o2 selectOption) int {
+		return cmp.Compare(o1.Title, o2.Title)
+	})
+	if len(sorted) == 0 {
+		unrefFiles(files)
+		a.notify(locale.Get("Taildrop"), locale.Get("No peers in this tailnet can receive files."))
+		return
+	}
 	Select[tailcfg.NodeView]{
 		Heading: locale.Get("Send file(s) to..."),
-		Options: slices.SortedFunc(options, func(o1, o2 selectOption) int {
-			return cmp.Compare(o1.Title, o2.Title)
-		}),
+		Options: sorted,
 	}.Show(a, func(options []selectOption) {
 		var wg sync.WaitGroup
 		for _, option := range options {
