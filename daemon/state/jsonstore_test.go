@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 func TestStoreRoundTripPreservesEffectiveLeases(t *testing.T) {

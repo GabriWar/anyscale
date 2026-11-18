@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maisem/tailmix/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
 )
 
 type recordingDialer struct {

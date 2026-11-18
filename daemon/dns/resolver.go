@@ -39,7 +39,7 @@ func (r *Resolver) Resolve(name string) (netip.Addr, error) {
 	}
 	ip, ok := r.records[key]
 	if !ok {
-		return netip.Addr{}, fmt.Errorf("no explicit tailmix DNS record for %q", name)
+		return netip.Addr{}, fmt.Errorf("no explicit anyscale DNS record for %q", name)
 	}
 	return ip, nil
 }

@@ -11,10 +11,10 @@
 
 	<description>
 		<p>
-			Anyscale is a fork of Trayscale that talks to tailmix instead of tailscaled, so one machine can stay connected to several Tailscale and Headscale tailnets at the same time.
+			Anyscale is a fork of Anyscale that talks to anyscale instead of tailscaled, so one machine can stay connected to several Tailscale and Headscale tailnets at the same time.
 		</p>
 		<p>
-			It needs the tailmix daemon, <code>tailmixd</code>, to be installed and running. Adding, removing and enabling tailnets and choosing an exit node ask for administrator access through polkit.
+			It needs the anyscale daemon, <code>anyscaled</code>, to be installed and running. Adding, removing and enabling tailnets and choosing an exit node ask for administrator access through polkit.
 		</p>
 	</description>
 
@@ -38,10 +38,10 @@
 		<release version="v0.1.0" date="2026-11-16">
 			<description>
 				<ul>
-					<li>Fork of Trayscale v0.21.0 on top of tailmix v0.1.20.</li>
+					<li>Fork of Anyscale v0.21.0 on top of anyscale v0.1.20.</li>
 					<li>Sidebar that lists every tailnet with its own connect switch.</li>
 					<li>Add tailnets on Tailscale or any Headscale server from the GUI.</li>
-					<li>Exit node selection goes through the tailmix daemon.</li>
+					<li>Exit node selection goes through the anyscale daemon.</li>
 				</ul>
 			</description>
 		</release>

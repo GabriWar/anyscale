@@ -16,7 +16,7 @@ import (
 
 const AppID = "io.github.gabriwar.Anyscale"
 
-var Private = os.Getenv("TRAYSCALE_PRIVATE") == "1"
+var Private = os.Getenv("ANYSCALE_PRIVATE") == "1"
 
 var version = ""
 

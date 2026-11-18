@@ -17,16 +17,16 @@ import (
 	"syscall"
 
 	"github.com/gaissmai/bart"
-	tailmixdns "github.com/maisem/tailmix/dns"
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/hosttun"
-	"github.com/maisem/tailmix/packetmap"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/profilesocket"
-	"github.com/maisem/tailmix/routingpolicy"
-	"github.com/maisem/tailmix/state"
-	tailmixupdate "github.com/maisem/tailmix/update"
-	tailmixversion "github.com/maisem/tailmix/version"
+	anyscaledns "github.com/gabriwar/anyscale/daemon/dns"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/hosttun"
+	"github.com/gabriwar/anyscale/daemon/packetmap"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/routingpolicy"
+	"github.com/gabriwar/anyscale/daemon/state"
+	anyscaleupdate "github.com/gabriwar/anyscale/daemon/update"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
 	"github.com/tailscale/wireguard-go/tun"
 	"tailscale.com/net/tsaddr"
 )
@@ -63,7 +63,7 @@ func (f *profileFlag) Set(raw string) error {
 type runtimeProfile struct {
 	State      state.Profile
 	AuthKeyEnv string
-	Engine     tailmixprofile.Engine
+	Engine     anyscaleprofile.Engine
 	Tun        tun.Device
 }
 
@@ -89,9 +89,9 @@ func main() {
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	var profiles profileFlag
-	fs := flag.NewFlagSet("tailmixd", flag.ContinueOnError)
+	fs := flag.NewFlagSet("anyscaled", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	statePath := fs.String("state", defaultStatePath(), "path to tailmix daemon state")
+	statePath := fs.String("state", defaultStatePath(), "path to anyscale daemon state")
 	mode := fs.String("mode", "tun", "networking mode: tun or socks")
 	tunName := fs.String("tun-name", defaultTUNName(), "host TUN interface name")
 	socketDir := fs.String("socket-dir", profilesocket.DefaultDir(), "directory for per-profile LocalAPI sockets")
@@ -102,7 +102,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	logUpload := fs.Bool("log-upload", false, "opt in to remote per-profile logtail uploads")
 	logUploadURL := fs.String("log-upload-url", "", "replace the remote logtail upload base URL (requires -log-upload)")
 	updateRoot := fs.String("update-root", installedUpdateRoot(os.Args[0]), "root of a direct installation eligible for automatic updates")
-	autoUpdate := fs.Bool("auto-update", false, "automatically install stable tailmix updates (anyscale pins tailmix, so this is off by default)")
+	autoUpdate := fs.Bool("auto-update", false, "automatically install stable anyscalectl updates (anyscale pins anyscale, so this is off by default)")
 	operatorGroup := fs.String("operator-group", "", "group whose members may change tailnets without root")
 	showVersion := fs.Bool("version", false, "print version and exit")
 	registerProfileFlags(fs, &profiles)
@@ -110,7 +110,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		return err
 	}
 	if *showVersion {
-		fmt.Fprintln(stdout, tailmixversion.GetMeta().Format("tailmixd"))
+		fmt.Fprintln(stdout, anyscaleversion.GetMeta().Format("anyscaled"))
 		return nil
 	}
 	if *statePath == "" {
@@ -163,7 +163,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	_ = stdout
 	var updater binaryUpdater
 	if *autoUpdate && *updateRoot != "" {
-		updater = tailmixupdate.Client{Root: *updateRoot}
+		updater = anyscaleupdate.Client{Root: *updateRoot}
 	}
 	supervisor := newSupervisor(store, st, runtimeProfiles, daemonConfig{
 		Mode:          *mode,
@@ -176,7 +176,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 		LogUploadURL:  *logUploadURL,
 		Stderr:        stderr,
 		Updater:       updater,
-		Version:       tailmixversion.GetMeta().Short,
+		Version:       anyscaleversion.GetMeta().Short,
 		UpdateRoot:    *updateRoot,
 		UpdateDelay:   defaultUpdateDelay,
 	})
@@ -189,7 +189,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 }
 
 func registerProfileFlags(fs *flag.FlagSet, profiles *profileFlag) {
-	const usage = "profile config: id=work,dir=/path,hostname=tailmix-work[,suffix=tailnet.ts.net][,auth-key-env=ENV]"
+	const usage = "profile config: id=work,dir=/path,hostname=anyscale-work[,suffix=tailnet.ts.net][,auth-key-env=ENV]"
 	fs.Var(profiles, "profile", usage)
 	fs.Var(profiles, "p", usage+" (shorthand)")
 }
@@ -197,9 +197,9 @@ func registerProfileFlags(fs *flag.FlagSet, profiles *profileFlag) {
 func defaultStatePath() string {
 	dir, err := os.UserConfigDir()
 	if err != nil || dir == "" {
-		return filepath.Join(".", "tailmix-state.json")
+		return filepath.Join(".", "anyscale-state.json")
 	}
-	return filepath.Join(dir, "tailmix", "state.json")
+	return filepath.Join(dir, "anyscalectl", "state.json")
 }
 
 func installedUpdateRoot(argv0 string) string {
@@ -218,7 +218,7 @@ func defaultTUNName() string {
 	if runtime.GOOS == "darwin" {
 		return "utun"
 	}
-	return "tailmix0"
+	return "anyscale0"
 }
 
 func configureSyntheticPools(st *state.State, ipv4Override, ipv6Override string) error {
@@ -277,8 +277,8 @@ func normalizeSyntheticPool(name, raw string, ipv6 bool) (string, error) {
 	if !pool.Addr().IsGlobalUnicast() {
 		return "", fmt.Errorf("effective %s pool must contain unicast addresses: %v", name, pool)
 	}
-	if !ipv6 && pool.Contains(tailmixdns.ServiceIP()) {
-		return "", fmt.Errorf("effective IPv4 pool %v contains MagicDNS service address %v", pool, tailmixdns.ServiceIP())
+	if !ipv6 && pool.Contains(anyscaledns.ServiceIP()) {
+		return "", fmt.Errorf("effective IPv4 pool %v contains MagicDNS service address %v", pool, anyscaledns.ServiceIP())
 	}
 	return pool.String(), nil
 }
@@ -356,7 +356,7 @@ func firstFreePoolIP(pool netip.Prefix, used map[netip.Addr]bool) netip.Addr {
 		if !ip.IsValid() {
 			break
 		}
-		if !used[ip] && ip != tailmixdns.ServiceIP() {
+		if !used[ip] && ip != anyscaledns.ServiceIP() {
 			return ip
 		}
 	}
@@ -466,7 +466,7 @@ func resolveProfiles(st state.State, specs []profileSpec, statePath string) ([]r
 			rp.State.StateDir = filepath.Join(baseDir, rp.State.ID)
 		}
 		if rp.State.Hostname == "" {
-			rp.State.Hostname = "tailmix-" + dnsLabel(rp.State.ID)
+			rp.State.Hostname = "anyscale-" + dnsLabel(rp.State.ID)
 		}
 		out = append(out, rp)
 	}
@@ -499,15 +499,15 @@ func dnsLabel(s string) string {
 	return label
 }
 
-func tsnetConfig(rp runtimeProfile, stderr io.Writer, verbose, logUpload bool, logUploadURL string) (tailmixprofile.TSNetConfig, error) {
+func tsnetConfig(rp runtimeProfile, stderr io.Writer, verbose, logUpload bool, logUploadURL string) (anyscaleprofile.TSNetConfig, error) {
 	authKey := ""
 	if rp.AuthKeyEnv != "" {
 		authKey = os.Getenv(rp.AuthKeyEnv)
 		if authKey == "" {
-			return tailmixprofile.TSNetConfig{}, fmt.Errorf("profile %q auth-key-env %s is empty", rp.State.ID, rp.AuthKeyEnv)
+			return anyscaleprofile.TSNetConfig{}, fmt.Errorf("profile %q auth-key-env %s is empty", rp.State.ID, rp.AuthKeyEnv)
 		}
 	}
-	cfg := tailmixprofile.TSNetConfig{
+	cfg := anyscaleprofile.TSNetConfig{
 		ProfileID:      rp.State.ID,
 		Alias:          rp.State.Alias,
 		Dir:            rp.State.StateDir,
@@ -540,8 +540,8 @@ func stateProfiles(profiles []runtimeProfile) []state.Profile {
 	return out
 }
 
-func updateProfileMetadata(st *state.State, statuses []tailmixprofile.Status) {
-	byID := map[string]tailmixprofile.Status{}
+func updateProfileMetadata(st *state.State, statuses []anyscaleprofile.Status) {
+	byID := map[string]anyscaleprofile.Status{}
 	for _, ps := range statuses {
 		byID[ps.ProfileID] = ps
 	}
@@ -560,7 +560,7 @@ type reachableTarget struct {
 	IPs     []netip.Addr
 }
 
-func reachableTargets(status tailmixprofile.Status) []reachableTarget {
+func reachableTargets(status anyscaleprofile.Status) []reachableTarget {
 	targets := make([]reachableTarget, 0, len(status.Peers)+len(status.Services))
 	for _, peer := range status.Peers {
 		targets = append(targets, reachableTarget{
@@ -575,7 +575,7 @@ func reachableTargets(status tailmixprofile.Status) []reachableTarget {
 	return targets
 }
 
-func leaseTargets(statuses []tailmixprofile.Status) []effectiveip.Node {
+func leaseTargets(statuses []anyscaleprofile.Status) []effectiveip.Node {
 	var nodes []effectiveip.Node
 	for _, ps := range statuses {
 		for _, target := range reachableTargets(ps) {
@@ -618,7 +618,7 @@ func leasesFromState(stLeases []state.EffectiveLease) []effectiveip.Lease {
 	return leases
 }
 
-func assignEffectiveIPs(st state.State, statuses []tailmixprofile.Status) (active, all []effectiveip.Lease, err error) {
+func assignEffectiveIPs(st state.State, statuses []anyscaleprofile.Status) (active, all []effectiveip.Lease, err error) {
 	nodes := leaseTargets(statuses)
 	existing := leasesFromState(st.Leases)
 	for _, family := range []struct {
@@ -691,18 +691,18 @@ func mergeLeases(old, active []effectiveip.Lease) []effectiveip.Lease {
 
 type tunPlan struct {
 	State        state.State
-	Statuses     []tailmixprofile.Status
+	Statuses     []anyscaleprofile.Status
 	ActiveLeases []effectiveip.Lease
 	IPPolicy     routingpolicy.IPPlan
 	DNSPolicy    routingpolicy.DNSPlan
 	Table        packetmap.Table
 	HostConfig   hosttun.Config
-	DNSConfig    tailmixdns.LiveConfig
-	Domains      []tailmixdns.Domain
-	Records      []tailmixdns.Record
+	DNSConfig    anyscaledns.LiveConfig
+	Domains      []anyscaledns.Domain
+	Records      []anyscaledns.Record
 }
 
-func buildTUNPlan(st state.State, statuses []tailmixprofile.Status) (tunPlan, error) {
+func buildTUNPlan(st state.State, statuses []anyscaleprofile.Status) (tunPlan, error) {
 	st.Profiles = slices.Clone(st.Profiles)
 	st.Leases = slices.Clone(st.Leases)
 	updateProfileMetadata(&st, statuses)
@@ -738,7 +738,7 @@ func buildTUNPlan(st state.State, statuses []tailmixprofile.Status) (tunPlan, er
 	}, nil
 }
 
-func tunDNSConfig(st state.State, statuses []tailmixprofile.Status, leases []effectiveip.Lease) ([]tailmixdns.Domain, []tailmixdns.Record, error) {
+func tunDNSConfig(st state.State, statuses []anyscaleprofile.Status, leases []effectiveip.Lease) ([]anyscaledns.Domain, []anyscaledns.Record, error) {
 	cfg, err := tunDNSLiveConfig(st, statuses, leases, routingpolicy.BuildDNS(st, statuses))
 	if err != nil {
 		return nil, nil, err
@@ -746,17 +746,17 @@ func tunDNSConfig(st state.State, statuses []tailmixprofile.Status, leases []eff
 	return cfg.Domains, cfg.Records, nil
 }
 
-func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases []effectiveip.Lease, policy routingpolicy.DNSPlan) (tailmixdns.LiveConfig, error) {
+func tunDNSLiveConfig(st state.State, statuses []anyscaleprofile.Status, leases []effectiveip.Lease, policy routingpolicy.DNSPlan) (anyscaledns.LiveConfig, error) {
 	byKey := make(map[effectiveip.NodeKey]netip.Addr, len(leases))
 	for _, lease := range leases {
 		if existing, ok := byKey[lease.NodeKey]; ok && existing != lease.EffectiveIP {
-			return tailmixdns.LiveConfig{}, fmt.Errorf("target %+v has conflicting effective IP leases %v and %v", lease.NodeKey, existing, lease.EffectiveIP)
+			return anyscaledns.LiveConfig{}, fmt.Errorf("target %+v has conflicting effective IP leases %v and %v", lease.NodeKey, existing, lease.EffectiveIP)
 		}
 		byKey[lease.NodeKey] = lease.EffectiveIP
 	}
 	suffixByProfile := map[string]string{}
 	type candidateRecord struct {
-		record tailmixdns.Record
+		record anyscaledns.Record
 		owner  string
 	}
 	var candidates []candidateRecord
@@ -784,7 +784,7 @@ func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases [
 				}
 				candidates = append(candidates, candidateRecord{
 					owner: ps.ProfileID,
-					record: tailmixdns.Record{
+					record: anyscaledns.Record{
 						ProfileID:   ps.ProfileID,
 						Name:        name,
 						EffectiveIP: effective,
@@ -794,15 +794,15 @@ func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases [
 			return nil
 		}
 		if err := addRecords(ps.SelfNodeID, ps.SelfDNSName, ps.SelfIPs, true); err != nil {
-			return tailmixdns.LiveConfig{}, err
+			return anyscaledns.LiveConfig{}, err
 		}
 		for _, target := range reachableTargets(ps) {
 			if err := addRecords(target.ID, target.DNSName, target.IPs, false); err != nil {
-				return tailmixdns.LiveConfig{}, err
+				return anyscaledns.LiveConfig{}, err
 			}
 		}
 	}
-	var records []tailmixdns.Record
+	var records []anyscaledns.Record
 	domainOwners := map[string]bool{}
 	sharedByName := map[string]map[string]bool{}
 	for _, candidate := range candidates {
@@ -822,13 +822,13 @@ func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases [
 		}
 		owners[candidate.owner] = true
 	}
-	routeBySuffix := map[string]tailmixdns.Route{}
+	routeBySuffix := map[string]anyscaledns.Route{}
 	addPolicyRoute := func(entry routingpolicy.DNSEntry) {
 		resolvers := entry.Resolvers
 		if !entry.Active {
 			resolvers = nil
 		}
-		routeBySuffix[entry.Domain] = tailmixdns.Route{
+		routeBySuffix[entry.Domain] = anyscaledns.Route{
 			Suffix:     entry.Domain,
 			ProfileID:  entry.ProfileID,
 			ProfileDNS: entry.ProfileDNS && entry.Active,
@@ -866,12 +866,12 @@ func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases [
 				domainOwners[owner] = true
 			}
 		}
-		routeBySuffix[name] = tailmixdns.Route{Suffix: name}
+		routeBySuffix[name] = anyscaledns.Route{Suffix: name}
 	}
-	var domains []tailmixdns.Domain
+	var domains []anyscaledns.Domain
 	for profileID := range domainOwners {
 		if suffix := suffixByProfile[profileID]; suffix != "" {
-			domains = append(domains, tailmixdns.Domain{
+			domains = append(domains, anyscaledns.Domain{
 				ProfileID:         profileID,
 				Suffix:            suffix,
 				AuthoritativeOnly: true,
@@ -890,7 +890,7 @@ func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases [
 		}
 		return records[i].EffectiveIP.Compare(records[j].EffectiveIP) < 0
 	})
-	routes := make([]tailmixdns.Route, 0, len(routeBySuffix))
+	routes := make([]anyscaledns.Route, 0, len(routeBySuffix))
 	for _, route := range routeBySuffix {
 		routes = append(routes, route)
 	}
@@ -899,7 +899,7 @@ func tunDNSLiveConfig(st state.State, statuses []tailmixprofile.Status, leases [
 	for _, domain := range policy.Search.Installed {
 		searchDomains = append(searchDomains, domain.Domain)
 	}
-	return tailmixdns.LiveConfig{
+	return anyscaledns.LiveConfig{
 		Domains:       domains,
 		Records:       records,
 		Routes:        routes,
@@ -916,11 +916,11 @@ func hasDNSPolicyDomain(domain string, entries []routingpolicy.DNSEntry) bool {
 	return false
 }
 
-func tunConfig(st state.State, statuses []tailmixprofile.Status, leases []effectiveip.Lease) (packetmap.Table, hosttun.Config, error) {
+func tunConfig(st state.State, statuses []anyscaleprofile.Status, leases []effectiveip.Lease) (packetmap.Table, hosttun.Config, error) {
 	return tunConfigWithPolicy(st, statuses, leases, routingpolicy.BuildIP(st, statuses))
 }
 
-func tunConfigWithPolicy(st state.State, statuses []tailmixprofile.Status, leases []effectiveip.Lease, policy routingpolicy.IPPlan) (packetmap.Table, hosttun.Config, error) {
+func tunConfigWithPolicy(st state.State, statuses []anyscaleprofile.Status, leases []effectiveip.Lease, policy routingpolicy.IPPlan) (packetmap.Table, hosttun.Config, error) {
 	byKey := map[effectiveip.NodeKey]netip.Addr{}
 	for _, lease := range leases {
 		if existing, ok := byKey[lease.NodeKey]; ok && existing != lease.EffectiveIP {
@@ -1011,7 +1011,7 @@ func tunConfigWithPolicy(st state.State, statuses []tailmixprofile.Status, lease
 	}
 	for _, entry := range policy.Exact {
 		if routeOverlapsReserved(st, entry.Prefix) {
-			return packetmap.Table{}, hosttun.Config{}, fmt.Errorf("bound route %v overlaps a tailmix reserved range", entry.Prefix)
+			return packetmap.Table{}, hosttun.Config{}, fmt.Errorf("bound route %v overlaps a anyscale reserved range", entry.Prefix)
 		}
 		table.ExactRoutes.Insert(entry.Prefix, packetmap.SubnetRoute{ProfileID: entry.ProfileID, Active: entry.Active})
 		if entry.Active {
@@ -1056,7 +1056,7 @@ func tunConfigWithPolicy(st state.State, statuses []tailmixprofile.Status, lease
 			}
 		}
 	}
-	serviceIPs := []netip.Addr{st.DNSIP, tailmixdns.ServiceIP()}
+	serviceIPs := []netip.Addr{st.DNSIP, anyscaledns.ServiceIP()}
 	for _, serviceIP := range serviceIPs {
 		if !serviceIP.IsValid() {
 			return packetmap.Table{}, hosttun.Config{}, errors.New("MagicDNS service address is unavailable")
@@ -1096,7 +1096,7 @@ func tunConfigWithPolicy(st state.State, statuses []tailmixprofile.Status, lease
 			Source:      st.NATIP,
 		},
 		hosttun.Route{
-			Destination: netip.PrefixFrom(tailmixdns.ServiceIP(), tailmixdns.ServiceIP().BitLen()),
+			Destination: netip.PrefixFrom(anyscaledns.ServiceIP(), anyscaledns.ServiceIP().BitLen()),
 			Source:      st.NATIP,
 			Optional:    true,
 		},
@@ -1104,7 +1104,7 @@ func tunConfigWithPolicy(st state.State, statuses []tailmixprofile.Status, lease
 	return table, hostCfg, nil
 }
 
-func activeExitProfile(st state.State, statuses []tailmixprofile.Status) string {
+func activeExitProfile(st state.State, statuses []anyscaleprofile.Status) string {
 	if st.ExitNode == nil {
 		return ""
 	}
@@ -1148,7 +1148,7 @@ func routeOverlapsReserved(st state.State, prefix netip.Prefix) bool {
 			return true
 		}
 	}
-	for _, addr := range []netip.Addr{st.NATIP, st.NATIPv6, st.DNSIP, tailmixdns.ServiceIP()} {
+	for _, addr := range []netip.Addr{st.NATIP, st.NATIPv6, st.DNSIP, anyscaledns.ServiceIP()} {
 		if addr.IsValid() && prefix.Addr().Is6() == addr.Is6() && prefix.Contains(addr) {
 			return true
 		}

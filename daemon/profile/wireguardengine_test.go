@@ -10,8 +10,8 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/maisem/tailmix/tunmux"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/tunmux"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"github.com/tailscale/wireguard-go/conn/bindtest"
 	"github.com/tailscale/wireguard-go/tun/tuntest"
 	"tailscale.com/net/packet"

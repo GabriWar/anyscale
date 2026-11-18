@@ -199,12 +199,12 @@ Rules:
 - Split-DNS queries use a profile-scoped forwarder. Resolver addresses cannot
   be installed through a shared dialer because private resolver IPs may overlap
   across tailnets.
-- Unique short names do not cause tailmix to infer or install a search domain.
+- Unique short names do not cause anyscale to infer or install a search domain.
 - A configured search domain is installed only when it is equal to or below
   an effective DNS route.
 - Search-domain order is explicit administrator policy. Short-name expansion
   and collisions follow the host resolver's normal search-list behavior;
-  tailmix does not pick a profile by priority.
+  anyscale does not pick a profile by priority.
 - Configured domains without a current DNS route remain desired but
   are not installed.
 - DNS answers for node and Tailscale Service names return effective IPs.
@@ -303,13 +303,13 @@ in [profile-management.md](profile-management.md).
 Profile-scoped commands use:
 
 ```text
-tailmix tailscale --profile <name> <tailscale-subcommand> [arguments]
-tailmix ts --profile <name> <tailscale-subcommand> [arguments]
+anyscalectl tailscale --profile <name> <tailscale-subcommand> [arguments]
+anyscalectl ts --profile <name> <tailscale-subcommand> [arguments]
 ```
 
 Every `--profile` option also accepts `-p`.
 
-`tailmix` selects that profile's LocalAPI socket and delegates the remaining
+`anyscale` selects that profile's LocalAPI socket and delegates the remaining
 arguments to `tailscale.com/cmd/tailscale/cli`. Command behavior and output are
 therefore upstream Tailscale behavior. `ts` is an exact shortcut for the
 `tailscale` command namespace. The explicit command namespace and profile
@@ -318,16 +318,16 @@ domains. The daemon serves each socket through `ipnserver`, so peer credentials
 and `OperatorUser` permissions are evaluated in the same request path as
 `tailscaled`.
 
-Aggregate lifecycle commands use `tailmix profiles ...`; IP route bindings use
-`tailmix routes ...`; and DNS bindings and search policy use
-`tailmix dns routes ...` and `tailmix dns search ...`. All use a separate
+Aggregate lifecycle commands use `anyscalectl profiles ...`; IP route bindings use
+`anyscalectl routes ...`; and DNS bindings and search policy use
+`anyscalectl dns routes ...` and `anyscalectl dns search ...`. All use a separate
 multi-profile API and must not silently pick one profile.
 
 Profile-wide imports are explicit live policy:
 
 ```text
-tailmix routes set --profile <name> --accept-all=<true|false>
-tailmix dns routes set --profile <name> --accept-all=<true|false>
+anyscalectl routes set --profile <name> --accept-all=<true|false>
+anyscalectl dns routes set --profile <name> --accept-all=<true|false>
 ```
 
 Disabling accept-all withdraws imported routes without removing exact

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Created with Cambalache 0.96.1 -->
-<interface domain="trayscale">
+<interface domain="anyscale">
   <!-- interface-name mullvadpage.ui -->
   <requires lib="gtk" version="4.12"/>
   <requires lib="libadwaita" version="1.0"/>
-  <template class="TrayscaleMullvadPage" parent="AdwBin">
+  <template class="AnyscaleMullvadPage" parent="AdwBin">
     <property name="child">
       <object class="AdwStatusPage" id="Page">
         <property name="title" translatable="yes">Mullvad Exit Nodes</property>

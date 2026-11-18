@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/maisem/tailmix/controlapi"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
 	"tailscale.com/client/local"
 	"tailscale.com/ipn"
 )
@@ -151,7 +151,7 @@ func (h Helper) SetOperator(ctx context.Context, name string) error {
 }
 
 // SetExitNode routes all traffic through peer of the tailnet named
-// name. tailmix allows only one exit node across all tailnets.
+// name. anyscale allows only one exit node across all tailnets.
 func (h Helper) SetExitNode(ctx context.Context, name, peer string) error {
 	if err, ok := h.direct(func(c *Client) error {
 		_, err := c.api.SetExitNode(ctx, controlapi.SetExitNodeRequest{ProfileName: name, Peer: peer})

@@ -64,7 +64,7 @@ func runCompletion(ctx context.Context, socketDir string, args []string, deps de
 		if delegateTailscaleCompletion(ctx, socketDir, words, deps) {
 			return nil
 		}
-		candidates, directive := completeTailmix(ctx, socketDir, words, deps)
+		candidates, directive := completeAnyscale(ctx, socketDir, words, deps)
 		writeCompletionCandidates(deps.stdout, candidates, directive)
 		return nil
 	default:
@@ -74,7 +74,7 @@ func runCompletion(ctx context.Context, socketDir string, args []string, deps de
 
 func writeCompletionScript(w io.Writer, shell string) error {
 	const (
-		name    = "tailmix"
+		name    = "anyscalectl"
 		command = "completion __complete --"
 	)
 	switch shell {
@@ -146,7 +146,7 @@ func completionSocketDir(fallback string, words []string) (string, int) {
 	return fallback, 0
 }
 
-func completeTailmix(ctx context.Context, socketDir string, words []string, deps dependencies) ([]completionCandidate, cobra.ShellCompDirective) {
+func completeAnyscale(ctx context.Context, socketDir string, words []string, deps dependencies) ([]completionCandidate, cobra.ShellCompDirective) {
 	if len(words) == 0 {
 		words = []string{""}
 	}
@@ -339,7 +339,7 @@ func completionCommandTree() *completionCommand {
 	}
 	jsonFlag := func() completionFlag { return flag("Write JSON output", completionNoValue, "--json") }
 	profileFlag := func() completionFlag {
-		return flag("Select a tailmix profile", completionProfile, "-p", "--profile")
+		return flag("Select a anyscale profile", completionProfile, "-p", "--profile")
 	}
 	leaf := func(name, description string, flags []completionFlag, arguments ...completionValueKind) *completionCommand {
 		return &completionCommand{name: name, description: description, flags: flags, arguments: arguments}
@@ -442,7 +442,7 @@ func completionCommandTree() *completionCommand {
 	}
 
 	return &completionCommand{
-		name:  "tailmix",
+		name:  "anyscalectl",
 		flags: []completionFlag{flag("Use a different daemon socket directory", completionDirectory, "--socket-dir")},
 		subcommands: []*completionCommand{
 			{name: "status", description: "Show active profiles and accepted network policy", flags: []completionFlag{jsonFlag()}, help: true},
@@ -457,7 +457,7 @@ func completionCommandTree() *completionCommand {
 			tailscaleCompletionCommand("tailscale", "Run an upstream Tailscale command for one profile", profileFlag()),
 			tailscaleCompletionCommand("ts", "Shortcut for tailscale", profileFlag()),
 			completion,
-			{name: "version", description: "Show the tailmix build version", help: true},
+			{name: "version", description: "Show the anyscale build version", help: true},
 			leaf("help", "Show root help", nil),
 		},
 	}
@@ -482,13 +482,13 @@ func tailscaleCompletionCommand(name, description string, profileFlag completion
 }
 
 const completionHelp = `Usage:
-  tailmix completion bash
-  tailmix completion zsh
-  tailmix completion fish
-  tailmix completion powershell
-  tailmix completion pwsh
+  anyscalectl completion bash
+  anyscalectl completion zsh
+  anyscalectl completion fish
+  anyscalectl completion powershell
+  anyscalectl completion pwsh
 
 Generate a completion script for the selected shell. The scripts complete
-tailmix commands and flags, configured profile names, and delegated Tailscale
+anyscale commands and flags, configured profile names, and delegated Tailscale
 commands after a profile has been selected.
 `

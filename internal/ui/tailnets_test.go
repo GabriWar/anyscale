@@ -18,7 +18,7 @@ func TestTailnetState(t *testing.T) {
 		{mix.Tailnet{RuntimeState: "starting", BackendState: "Starting"}, false, "Starting…"},
 		{mix.Tailnet{RuntimeState: "needs-login", BackendState: "NeedsLogin"}, false, "Needs login"},
 		{mix.Tailnet{RuntimeState: "disabled"}, false, "Disabled"},
-		{mix.Tailnet{RuntimeState: "down"}, false, "tailmix stopped"},
+		{mix.Tailnet{RuntimeState: "down"}, false, "Daemon stopped"},
 		{mix.Tailnet{RuntimeState: "error", LastError: "boom"}, false, "Error"},
 	} {
 		if got := tailnetState(test.t, test.exit); got != test.want {

@@ -3,8 +3,8 @@ package status
 import (
 	"net/netip"
 
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/profile"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/profile"
 )
 
 type Status struct {

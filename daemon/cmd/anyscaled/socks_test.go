@@ -4,8 +4,8 @@ import (
 	"io"
 	"testing"
 
-	"github.com/maisem/tailmix/state"
-	"github.com/maisem/tailmix/tunmux"
+	"github.com/gabriwar/anyscale/daemon/state"
+	"github.com/gabriwar/anyscale/daemon/tunmux"
 	"github.com/tailscale/wireguard-go/tun"
 )
 

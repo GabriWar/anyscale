@@ -1,4 +1,4 @@
-// Package update installs paired tailmix releases published by GoReleaser.
+// Package update installs paired anyscale releases published by GoReleaser.
 package update
 
 import (
@@ -24,7 +24,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const defaultAPIURL = "https://api.github.com/repos/maisem/tailmix/releases/latest"
+const defaultAPIURL = "https://api.github.com/repos/maisem/anyscale/releases/latest"
 
 type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
@@ -258,7 +258,7 @@ func (c Client) get(ctx context.Context, url string) ([]byte, error) {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "tailmix-updater")
+	req.Header.Set("User-Agent", "anyscale-updater")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return nil, err
@@ -298,7 +298,7 @@ func verifyChecksum(name string, data, sums []byte) error {
 }
 
 func extractPair(dir, name string, data []byte) error {
-	wanted := map[string]bool{"tailmix": false, "tailmixd": false}
+	wanted := map[string]bool{"anyscalectl": false, "anyscaled": false}
 	if strings.HasSuffix(name, ".zip") {
 		zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
 		if err != nil {
@@ -380,7 +380,7 @@ func validatePair(dir, goos string) error {
 	if goos == "windows" {
 		suffix = ".exe"
 	}
-	for _, n := range []string{"tailmix" + suffix, "tailmixd" + suffix} {
+	for _, n := range []string{"anyscalectl" + suffix, "anyscaled" + suffix} {
 		if _, err := os.Stat(filepath.Join(dir, n)); err != nil {
 			return err
 		}

@@ -7,5 +7,5 @@ import (
 )
 
 func Open(OpenConfig) (Host, error) {
-	return nil, errors.New("tailmix host TUN mode is currently implemented only on Darwin and Linux")
+	return nil, errors.New("anyscale host TUN mode is currently implemented only on Darwin and Linux")
 }

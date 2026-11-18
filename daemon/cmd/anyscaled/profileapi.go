@@ -9,8 +9,8 @@ import (
 	"os"
 	"sync"
 
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/profilesocket"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
 	"tailscale.com/ipn/ipnserver"
 	"tailscale.com/safesocket"
 	"tailscale.com/types/logid"
@@ -45,7 +45,7 @@ func newProfileAPIGroup(ctx context.Context, dir string, stderr io.Writer) *prof
 func (g *profileAPIGroup) Errors() <-chan error { return g.errs }
 
 func (g *profileAPIGroup) Start(rp runtimeProfile) error {
-	provider, ok := rp.Engine.(tailmixprofile.LocalBackendProvider)
+	provider, ok := rp.Engine.(anyscaleprofile.LocalBackendProvider)
 	if !ok {
 		return fmt.Errorf("profile %q engine does not expose its LocalBackend", rp.State.ID)
 	}

@@ -93,7 +93,7 @@ func configForService(cfg ServiceConfig) (tailscaledns.Config, error) {
 		}
 		if !domain.Contains(name) {
 			// Shared-in peers retain their source tailnet's FQDN. Route only
-			// that exact name to tailmix instead of claiming its entire suffix.
+			// that exact name to anyscale instead of claiming its entire suffix.
 			exactRoutes[name] = true
 		}
 		if !containsAddr(hosts[name], record.EffectiveIP) {

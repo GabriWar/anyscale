@@ -43,7 +43,7 @@ msgstr "_Quit"
 
 	require.NoError(t, locale.BindGettext(fsys))
 
-	moPath := filepath.Join(cache, "trayscale-locale", "ja", "LC_MESSAGES", "trayscale.mo")
+	moPath := filepath.Join(cache, "anyscale-locale", "ja", "LC_MESSAGES", "anyscale.mo")
 	_, err := os.Stat(moPath)
 	require.NoError(t, err, "expected compiled MO at %s", moPath)
 

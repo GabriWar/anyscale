@@ -44,7 +44,7 @@ func profile() func() {
 	}
 }
 
-// runHelper runs a privileged tailmix operation as root. The GUI starts
+// runHelper runs a privileged anyscale operation as root. The GUI starts
 // it with pkexec.
 func runHelper(args []string) {
 	if os.Geteuid() != 0 {

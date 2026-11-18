@@ -9,7 +9,7 @@ INSTALL ?= install
 SED ?= sed
 SYSTEMCTL ?= systemctl
 SYSTEMD_UNIT_DIR ?= $(PREFIX)/lib/systemd/system
-SYSTEMD_UNIT ?= tailmixd.service
+SYSTEMD_UNIT ?= anyscaled.service
 
 .PHONY: check check-linux-network clean-linux-network check-ci ci install install-systemd install-test licenses licenses-check release-check
 
@@ -30,7 +30,7 @@ check-ci:
 
 check-linux-network:
 	$(GO) test ./cmd/linux-network-e2e
-	@set -eu; bin="$$(mktemp "$${TMPDIR:-/tmp}/tailmix-linux-network.XXXXXX")"; \
+	@set -eu; bin="$$(mktemp "$${TMPDIR:-/tmp}/anyscale-linux-network.XXXXXX")"; \
 	trap 'rm -f "$$bin"' EXIT HUP INT TERM; \
 	CGO_ENABLED=0 $(GO) build -o "$$bin" ./cmd/linux-network-e2e; \
 	GO="$(GO)" "$$bin" $(LINUX_NETWORK_ARGS)
@@ -44,11 +44,11 @@ install-test:
 install:
 	@set -e; \
 	version_ldflags="$$($(GO) run ./cmd/mkversion)"; \
-	GOBIN="$(DESTDIR)$(BINDIR)" $(GO) install -ldflags "$$version_ldflags" ./cmd/tailmix ./cmd/tailmixd
+	GOBIN="$(DESTDIR)$(BINDIR)" $(GO) install -ldflags "$$version_ldflags" ./cmd/anyscalectl ./cmd/anyscaled
 
 install-systemd: install
 	$(INSTALL) -d -m 0755 "$(DESTDIR)$(SYSTEMD_UNIT_DIR)"
-	$(SED) 's|@BINDIR@|$(BINDIR)|g' systemd/tailmixd.service.in > "$(DESTDIR)$(SYSTEMD_UNIT_DIR)/$(SYSTEMD_UNIT)"
+	$(SED) 's|@BINDIR@|$(BINDIR)|g' systemd/anyscaled.service.in > "$(DESTDIR)$(SYSTEMD_UNIT_DIR)/$(SYSTEMD_UNIT)"
 	chmod 0644 "$(DESTDIR)$(SYSTEMD_UNIT_DIR)/$(SYSTEMD_UNIT)"
 	@set -e; \
 	if [ -z "$(DESTDIR)" ]; then \

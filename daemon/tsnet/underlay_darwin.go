@@ -6,7 +6,7 @@
 package tsnet
 
 import (
-	tailmixnetns "github.com/maisem/tailmix/netns"
+	anyscalenetns "github.com/gabriwar/anyscale/daemon/netns"
 
 	"tailscale.com/net/netmon"
 	"tailscale.com/types/logger"
@@ -14,7 +14,7 @@ import (
 
 var (
 	darwinDefaultRouteInterfaceIndex = netmon.DefaultRouteInterfaceIndex
-	darwinPublishUnderlayInterface   = tailmixnetns.SetUnderlayInterfaceIndex
+	darwinPublishUnderlayInterface   = anyscalenetns.SetUnderlayInterfaceIndex
 )
 
 // trackSystemUnderlay publishes the interface owning the underlying /0 route

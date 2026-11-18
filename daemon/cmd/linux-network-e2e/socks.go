@@ -82,7 +82,7 @@ func probeConnection(dialer proxy.ContextDialer, test socksCase) error {
 	if conn.SetDeadline(time.Now().Add(6*time.Second)) != nil {
 		return failure("SOCKS stream deadline")
 	}
-	payload := bytes.Repeat([]byte("tailmix-socks-payload\x00"), 4096)
+	payload := bytes.Repeat([]byte("anyscale-socks-payload\x00"), 4096)
 	written := make(chan error, 1)
 	go func() {
 		_, err := io.Copy(conn, bytes.NewReader(payload))
@@ -127,9 +127,9 @@ func (r *rig) socksTests() {
 		"--add-host=proxy.corp.test:127.0.0.1",
 	}, nil)
 	r.e("client", "test", "!", "-e", "/dev/net/tun")
-	r.e("client", "ln", "-s", "/checkout/tailmix", "/bin/tailmix")
+	r.e("client", "ln", "-s", "/checkout/anyscale", "/bin/anyscalectl")
 	r.d("exec", "-d", r.names["client"], "sh", "-c",
-		"echo $$ > /private/app.pid; exec /checkout/tailmixd --mode=socks --socks=127.0.0.1:1080 "+
+		"echo $$ > /private/app.pid; exec /checkout/anyscaled --mode=socks --socks=127.0.0.1:1080 "+
 			"--auto-update=false --state=/private/state.json --socket-dir=/private/sockets "+
 			"--profile=id=work,dir=/private/work,hostname=client,auth-key-env=TEST_AUTHKEY "+
 			"> /private/socks-daemon.log 2>&1")

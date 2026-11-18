@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/profilesocket"
-	tailmixversion "github.com/maisem/tailmix/version"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 type fakeManagementClient struct {
@@ -32,7 +32,7 @@ type fakeManagementClient struct {
 	dnsPatch         controlapi.PatchDNSRoutesRequest
 	searchReplace    []string
 	statusProfiles   []controlapi.Profile
-	serverVersion    tailmixversion.Meta
+	serverVersion    anyscaleversion.Meta
 	versionErr       error
 	updateStatus     controlapi.UpdateStatus
 	updateAction     string
@@ -44,7 +44,7 @@ type fakeManagementClient struct {
 	added            []controlapi.AddProfileRequest
 }
 
-func (f *fakeManagementClient) Version(context.Context) (tailmixversion.Meta, error) {
+func (f *fakeManagementClient) Version(context.Context) (anyscaleversion.Meta, error) {
 	return f.serverVersion, f.versionErr
 }
 func (f *fakeManagementClient) Status(context.Context) (controlapi.Status, error) {
@@ -147,7 +147,7 @@ func testDependencies(client managementClient, stdout, stderr io.Writer, runner 
 		newClient: func(string) managementClient {
 			return client
 		},
-		version: "tailmix test-version",
+		version: "anyscale test-version",
 	}
 }
 
@@ -170,7 +170,7 @@ func TestDaemonLifecycleCommands(t *testing.T) {
 			if client.daemonUp != test.up {
 				t.Fatalf("daemon up = %v, want %v", client.daemonUp, test.up)
 			}
-			if got, want := stdout.String(), "tailmix is "+test.command+".\n"; got != want {
+			if got, want := stdout.String(), "anyscale is "+test.command+".\n"; got != want {
 				t.Fatalf("output = %q, want %q", got, want)
 			}
 		})
@@ -367,7 +367,7 @@ func TestTSRejectsDelegationWhileDaemonDown(t *testing.T) {
 			t.Fatal("upstream CLI unexpectedly called")
 			return nil
 		}))
-	if code != 1 || !strings.Contains(stderr.String(), "tailmix is down; run \"tailmix up\" first") {
+	if code != 1 || !strings.Contains(stderr.String(), "anyscale is down; run \"anyscale up\" first") {
 		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
 	}
 }
@@ -402,7 +402,7 @@ func TestTSRejectsSocketOverride(t *testing.T) {
 			t.Fatal("upstream CLI unexpectedly called")
 			return nil
 		}))
-	if code != 2 || !bytes.Contains(stderr.Bytes(), []byte("managed by tailmix")) {
+	if code != 2 || !bytes.Contains(stderr.Bytes(), []byte("managed by anyscale")) {
 		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
 	}
 }
@@ -537,7 +537,7 @@ func TestLegacySyntaxExplainsReplacement(t *testing.T) {
 	var stderr bytes.Buffer
 	code := runWithDependencies(context.Background(), []string{"work", "status"},
 		testDependencies(&fakeManagementClient{}, io.Discard, &stderr, nil))
-	if code != 2 || !strings.Contains(stderr.String(), "tailmix ts --profile work status") {
+	if code != 2 || !strings.Contains(stderr.String(), "anyscalectl ts --profile work status") {
 		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
 	}
 }
@@ -566,7 +566,7 @@ func TestCompletionScripts(t *testing.T) {
 				t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
 			}
 			if !strings.Contains(stdout.String(), "completion __complete --") {
-				t.Fatalf("completion script does not invoke tailmix's completion endpoint:\n%s", stdout.String())
+				t.Fatalf("completion script does not invoke anyscale's completion endpoint:\n%s", stdout.String())
 			}
 		})
 	}
@@ -656,7 +656,7 @@ func TestCompletionDoesNotDelegateWhileDaemonDown(t *testing.T) {
 }
 
 func TestVersion(t *testing.T) {
-	client := &fakeManagementClient{serverVersion: tailmixversion.Meta{
+	client := &fakeManagementClient{serverVersion: anyscaleversion.Meta{
 		Short:            "daemon-version",
 		Long:             "daemon-long-version",
 		TailscaleVersion: "tailscale-version",
@@ -667,8 +667,8 @@ func TestVersion(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
 	}
-	want := "tailmix test-version\n\n" +
-		"tailmixd daemon-version\n" +
+	want := "anyscale test-version\n\n" +
+		"anyscaled daemon-version\n" +
 		"  long version: daemon-long-version\n" +
 		"  tailscale: tailscale-version\n"
 	if got := stdout.String(); got != want {
@@ -684,7 +684,7 @@ func TestVersionReportsUnavailableDaemon(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, stderr = %q", code, stderr.String())
 	}
-	if got, want := stdout.String(), "tailmix test-version\n\ntailmixd unavailable\n"; got != want {
+	if got, want := stdout.String(), "anyscale test-version\n\nanyscaled unavailable\n"; got != want {
 		t.Fatalf("version output = %q, want %q", got, want)
 	}
 }
@@ -1169,7 +1169,7 @@ func TestTSWithoutProfile(t *testing.T) {
 			profiles:   []controlapi.Profile{},
 			args:       []string{"ts", "status"},
 			wantCode:   2,
-			wantStderr: `no Tailscale profiles yet; run "sudo tailmix ts login" to create one`,
+			wantStderr: `no Tailscale profiles yet; run "sudo anyscalectl ts login" to create one`,
 		},
 		{
 			name: "multiple profiles require a choice",

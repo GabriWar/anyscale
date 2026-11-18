@@ -7,23 +7,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maisem/tailmix/state"
-	tailmixupdate "github.com/maisem/tailmix/update"
+	"github.com/gabriwar/anyscale/daemon/state"
+	anyscaleupdate "github.com/gabriwar/anyscale/daemon/update"
 )
 
 type fakeBinaryUpdater struct {
-	release    tailmixupdate.Release
+	release    anyscaleupdate.Release
 	newer      bool
 	applyError error
 	rolledBack string
 	applied    chan struct{}
 }
 
-func (u *fakeBinaryUpdater) Check(context.Context, string) (tailmixupdate.Release, bool, error) {
+func (u *fakeBinaryUpdater) Check(context.Context, string) (anyscaleupdate.Release, bool, error) {
 	return u.release, u.newer, nil
 }
 
-func (u *fakeBinaryUpdater) Apply(context.Context, string) (tailmixupdate.Release, string, bool, error) {
+func (u *fakeBinaryUpdater) Apply(context.Context, string) (anyscaleupdate.Release, string, bool, error) {
 	if u.applied != nil {
 		select {
 		case u.applied <- struct{}{}:
@@ -43,7 +43,7 @@ func TestUpdateControlPersistsDefaultOnPolicyAndAppliesPair(t *testing.T) {
 	if err := store.Save(state.State{}); err != nil {
 		t.Fatal(err)
 	}
-	updater := &fakeBinaryUpdater{release: tailmixupdate.Release{Version: "v1.1.0"}, newer: true}
+	updater := &fakeBinaryUpdater{release: anyscaleupdate.Release{Version: "v1.1.0"}, newer: true}
 	s := newSupervisor(store, state.State{}, nil, daemonConfig{
 		Updater:    updater,
 		Version:    "v1.0.0",
@@ -103,11 +103,11 @@ func TestApplyUpdateRecordsFailureWithoutRestart(t *testing.T) {
 }
 
 func TestInstalledUpdateRoot(t *testing.T) {
-	root := filepath.Join(t.TempDir(), "tailmix")
-	if got := installedUpdateRoot(filepath.Join(root, "current", "tailmixd")); got != root {
+	root := filepath.Join(t.TempDir(), "anyscalectl")
+	if got := installedUpdateRoot(filepath.Join(root, "current", "anyscaled")); got != root {
 		t.Fatalf("installedUpdateRoot = %q, want %q", got, root)
 	}
-	if got := installedUpdateRoot(filepath.Join(root, "tailmixd")); got != "" {
+	if got := installedUpdateRoot(filepath.Join(root, "anyscaled")); got != "" {
 		t.Fatalf("non-versioned installedUpdateRoot = %q", got)
 	}
 }
@@ -128,7 +128,7 @@ func TestUpdateLoopAutomaticallyAppliesWhenEnabled(t *testing.T) {
 	if err := store.Save(state.State{}); err != nil {
 		t.Fatal(err)
 	}
-	updater := &fakeBinaryUpdater{release: tailmixupdate.Release{Version: "v1.1.0"}, newer: true}
+	updater := &fakeBinaryUpdater{release: anyscaleupdate.Release{Version: "v1.1.0"}, newer: true}
 	s := newSupervisor(store, state.State{}, nil, daemonConfig{
 		Updater: updater, Version: "v1.0.0", UpdateRoot: t.TempDir(),
 		UpdateDelay: func(bool) time.Duration { return time.Millisecond },
@@ -162,7 +162,7 @@ func TestUpdateLoopWaitsWhileDisabled(t *testing.T) {
 	}
 	applied := make(chan struct{}, 1)
 	updater := &fakeBinaryUpdater{
-		release: tailmixupdate.Release{Version: "v1.1.0"}, newer: true, applied: applied,
+		release: anyscaleupdate.Release{Version: "v1.1.0"}, newer: true, applied: applied,
 	}
 	s := newSupervisor(store, st, nil, daemonConfig{
 		Updater: updater, Version: "v1.0.0", UpdateRoot: t.TempDir(),
@@ -209,7 +209,7 @@ func TestUpdateRestartRollsBackBeforeRetry(t *testing.T) {
 		return wantSecond
 	}
 	t.Cleanup(func() { execProcess = oldExec })
-	err := restart.exec([]string{"tailmixd", "-state=test"}, []string{"A=B"})
+	err := restart.exec([]string{"anyscaled", "-state=test"}, []string{"A=B"})
 	if !errors.Is(err, wantFirst) || updater.rolledBack != restart.oldTarget || calls != 2 {
 		t.Fatalf("exec error = %v, rollback = %q, calls = %d", err, updater.rolledBack, calls)
 	}

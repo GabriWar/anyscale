@@ -1,4 +1,4 @@
-// Package wireguardcfg parses and validates tailmix WireGuard profile files.
+// Package wireguardcfg parses and validates anyscale WireGuard profile files.
 package wireguardcfg
 
 import (

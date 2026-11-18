@@ -6,51 +6,51 @@ Date: 2026-07-23
 
 ## Summary
 
-tailmix should manage its configured profile set through a daemon-owned local
-control API. The `tailmix` CLI should use that API for profile lifecycle
+anyscale should manage its configured profile set through a daemon-owned local
+control API. The `anyscale` CLI should use that API for profile lifecycle
 commands while continuing to send profile-local Tailscale commands to the
 selected profile's existing LocalAPI socket.
 
 The proposed command shape is:
 
 ```text
-tailmix profiles list
-tailmix profiles show <name>
-tailmix profiles add <name> [options]
-tailmix profiles rename <name> <new-name>
-tailmix profiles set <name> [options]
-tailmix profiles enable <name>
-tailmix profiles disable <name>
-tailmix profiles restart <name>
-tailmix profiles remove <name> [--purge --yes]
+anyscalectl profiles list
+anyscalectl profiles show <name>
+anyscalectl profiles add <name> [options]
+anyscalectl profiles rename <name> <new-name>
+anyscalectl profiles set <name> [options]
+anyscalectl profiles enable <name>
+anyscalectl profiles disable <name>
+anyscalectl profiles restart <name>
+anyscalectl profiles remove <name> [--purge --yes]
 
-tailmix routes list [--available]
-tailmix routes bind --profile <name> <prefix>...
-tailmix routes unbind <prefix>...
-tailmix routes set --profile <name> --accept-all=<true|false>
+anyscalectl routes list [--available]
+anyscalectl routes bind --profile <name> <prefix>...
+anyscalectl routes unbind <prefix>...
+anyscalectl routes set --profile <name> --accept-all=<true|false>
 
-tailmix exit-node list [--filter <country>]
-tailmix exit-node set --profile <name> <peer>
-tailmix exit-node clear
+anyscalectl exit-node list [--filter <country>]
+anyscalectl exit-node set --profile <name> <peer>
+anyscalectl exit-node clear
 
-tailmix dns routes list [--available]
-tailmix dns routes bind --profile <name> <domain>...
-tailmix dns routes unbind <domain>...
-tailmix dns routes set --profile <name> --accept-all=<true|false>
+anyscalectl dns routes list [--available]
+anyscalectl dns routes bind --profile <name> <domain>...
+anyscalectl dns routes unbind <domain>...
+anyscalectl dns routes set --profile <name> --accept-all=<true|false>
 
-tailmix dns search list
-tailmix dns search set <domain>...
-tailmix dns search add <domain>...
-tailmix dns search remove <domain>...
-tailmix dns search clear
+anyscalectl dns search list
+anyscalectl dns search set <domain>...
+anyscalectl dns search add <domain>...
+anyscalectl dns search remove <domain>...
+anyscalectl dns search clear
 ```
 
 Profile-local Tailscale commands have their own explicit namespace and select a
 profile by option:
 
 ```text
-tailmix tailscale --profile work status
-tailmix ts --profile home ping peer.home.example
+anyscalectl tailscale --profile work status
+anyscalectl ts --profile home ping peer.home.example
 ```
 
 `ts` is an exact shortcut for `tailscale`; neither form changes the delegated
@@ -62,10 +62,10 @@ or removing a profile must not restart the daemon or disrupt other profiles.
 
 ## Goals
 
-- Add and remove profiles without restarting `tailmixd`.
+- Add and remove profiles without restarting `anyscaled`.
 - Start, stop, and restart one profile without affecting the others.
 - Persist every successful requested configuration change.
-- Give tailmix commands, local profile names, advertised hostnames, and
+- Give anyscale commands, local profile names, advertised hostnames, and
   tailnet-provided DNS names distinct naming domains.
 - Accept selected advertised IP routes and pin each destination prefix to one
   profile.
@@ -100,14 +100,14 @@ or removing a profile must not restart the daemon or disrupt other profiles.
 The first positional token always names a command namespace, never a profile:
 
 ```text
-tailmix version
-tailmix status [--json]
-tailmix profiles <lifecycle-command> [arguments]
-tailmix routes <policy-command> [arguments]
-tailmix exit-node <policy-command> [arguments]
-tailmix dns routes <policy-command> [arguments]
-tailmix dns search <policy-command> [arguments]
-tailmix {tailscale|ts} [--profile <name>] <tailscale-subcommand> [arguments]
+anyscalectl version
+anyscalectl status [--json]
+anyscalectl profiles <lifecycle-command> [arguments]
+anyscalectl routes <policy-command> [arguments]
+anyscalectl exit-node <policy-command> [arguments]
+anyscalectl dns routes <policy-command> [arguments]
+anyscalectl dns search <policy-command> [arguments]
+anyscale {tailscale|ts} [--profile <name>] <tailscale-subcommand> [arguments]
 ```
 
 `version` prints the client and running daemon semantic versions, source
@@ -116,7 +116,7 @@ client version when the daemon is unavailable. `status` is the daemon-wide
 overview: active profiles, configured or imported IP routes, the selected exit
 node, effective DNS routes, and configured DNS search domains. It omits
 advertised-but-unaccepted choices; the corresponding `list` commands show those.
-`profiles` owns tailmix lifecycle operations. `tailscale` delegates to the
+`profiles` owns anyscale lifecycle operations. `tailscale` delegates to the
 selected profile's upstream Tailscale CLI, and `ts` is its exact alias. A
 profile name appears only as an operand or the value of `--profile`. `routes`
 owns daemon-wide IP route policy, and `exit-node` owns the one daemon-wide
@@ -125,40 +125,40 @@ search` owns the ordered OS search list. Prefixes and DNS domains therefore
 occupy only resource positions and cannot collide with profile or command
 names.
 
-`tailmixd` links Tailscale's SSH server feature on supported Unix platforms.
+`anyscaled` links Tailscale's SSH server feature on supported Unix platforms.
 Users enable it independently for each embedded node through the delegated
-CLI, for example `tailmix ts --profile work set --ssh`; the tailnet's SSH access
+CLI, for example `anyscalectl ts --profile work set --ssh`; the tailnet's SSH access
 policy remains authoritative.
 
 `tailscale` may omit `--profile` when exactly one Tailscale profile exists;
 raw WireGuard and removed profiles are not counted. With several, it fails and
 lists their names. With none, `up` and `login` first add a profile named
 `default` and report it on standard error, so a first-time setup is one
-command (`sudo tailmix ts login`). Other subcommands fail instead of creating
+command (`sudo anyscalectl ts login`). Other subcommands fail instead of creating
 state.
 
-Every tailmix `--profile` option also accepts the short form `-p`. The
-`tailmixd` startup profile flag accepts the same alias.
+Every anyscale `--profile` option also accepts the short form `-p`. The
+`anyscaled` startup profile flag accepts the same alias.
 
-The current `tailmix work status` form is intentionally not part of the target
+The current `anyscale work status` form is intentionally not part of the target
 grammar. A release may recognize it solely to print a deprecation error with
 the exact replacement, but new functionality must not extend that ambiguous
 grammar:
 
 ```text
-tailmix work status
-# error: use "tailmix ts --profile work status"
+anyscale work status
+# error: use "anyscalectl ts --profile work status"
 ```
 
 Global CLI options precede the namespace; command-specific options follow their
 command:
 
 ```text
-tailmix --socket-dir /var/run/tailmix profiles list
-tailmix --socket-dir /var/run/tailmix profiles show work --json
+anyscalectl --socket-dir /var/run/anyscalectl profiles list
+anyscalectl --socket-dir /var/run/anyscalectl profiles show work --json
 ```
 
-`TAILMIX_SOCKET_DIR` remains supported. `--socket-dir` takes precedence and
+`ANYSCALE_SOCKET_DIR` remains supported. `--socket-dir` takes precedence and
 selects both the daemon control socket and per-profile LocalAPI sockets.
 
 ### Naming domains
@@ -194,10 +194,10 @@ An IP route binding says both which advertised subnet route to accept and which
 profile must carry it. There is no daemon-wide `accept-routes` boolean:
 
 ```text
-tailmix routes list [--available] [--json]
-tailmix routes bind --profile <name> <prefix>... [--replace] [--json]
-tailmix routes unbind <prefix>... [--profile <name>] [--json]
-tailmix routes set --profile <name> --accept-all=<true|false> [--json]
+anyscalectl routes list [--available] [--json]
+anyscalectl routes bind --profile <name> <prefix>... [--replace] [--json]
+anyscalectl routes unbind <prefix>... [--profile <name>] [--json]
+anyscalectl routes set --profile <name> --accept-all=<true|false> [--json]
 ```
 
 `bind` atomically records every normalized prefix against the selected
@@ -228,7 +228,7 @@ A binding becomes enabled only while the selected profile is active and its
 netmap has an approved primary subnet route that contains the requested
 prefix. Allowing a more-specific prefix lets an operator accept only part of an
 advertised route. Default routes are excluded because exit-node selection is a
-separate policy. Prefixes that overlap tailmix's effective-IP pools, host NAT
+separate policy. Prefixes that overlap anyscale's effective-IP pools, host NAT
 addresses, or other daemon-reserved ranges are rejected.
 
 `ADVERTISED BY` uses the subnet router's readable Tailscale node name rather
@@ -251,10 +251,10 @@ from multiple accept-all profiles may overlap, but an identical prefix from
 more than one profile is left uninstalled as `ambiguous-route` until an exact
 binding selects one.
 
-If the route is withdrawn or the profile becomes unavailable, tailmix removes
+If the route is withdrawn or the profile becomes unavailable, anyscale removes
 the host route and packet mapping but retains the desired binding as
 `waiting-for-route`. It is restored automatically when the same stable profile
-can serve it again. A binding implies acceptance: tailmix ensures the profile
+can serve it again. A binding implies acceptance: anyscale ensures the profile
 engine accepts the covering route while it is needed. That internal preference
 is only a transport mechanism and does not expose any unbound route to the
 host.
@@ -265,9 +265,9 @@ Exit-node policy is daemon-wide because a host can have only one selected
 default path:
 
 ```text
-tailmix exit-node list [--filter <country>] [--json]
-tailmix exit-node set --profile <name> <peer> [--json]
-tailmix exit-node clear [--json]
+anyscalectl exit-node list [--filter <country>] [--json]
+anyscalectl exit-node set --profile <name> <peer> [--json]
+anyscalectl exit-node clear [--json]
 ```
 
 The default human-readable `list` follows Tailscale's CLI display mechanics.
@@ -290,17 +290,17 @@ canonical peer IP. It applies that peer IP to the selected profile engine and
 clears exit-node preferences from the other active engines. Profile renames
 therefore do not disturb the selection. Every profile engine keeps
 Tailscale route acceptance enabled so its internal WireGuard configuration has
-the routes tailmix may select; this does not expose those routes on the host
-unless they are separately selected by tailmix policy. Tailmix selects the
+the routes anyscale may select; this does not expose those routes on the host
+unless they are separately selected by anyscale policy. Anyscale selects the
 peer through the profile's Tailscale `ExitNodeIP` preference and clears the
 previous `ExitNodeID`, matching `tailscale set --exit-node`; Tailscale resolves
-that IP back to the peer's stable ID. Tailmix waits until the profile reports
+that IP back to the peer's stable ID. Anyscale waits until the profile reports
 the expected resolved ID before installing host default routes; while the
 preference is pending, the selection reports `waiting` with reason
 `exit_node_not_applied`. Clearing an exit node clears both exit-node preference
 fields and leaves route acceptance enabled.
 
-In TUN mode, tailmix installs split IPv4 and IPv6 defaults so it can withdraw
+In TUN mode, anyscale installs split IPv4 and IPv6 defaults so it can withdraw
 only its own routes and leave the host's original defaults intact. On Linux,
 the defaults use a dedicated policy table so Tailscale's marked transport
 sockets continue to use the ordinary underlay route. Direct effective-peer
@@ -321,10 +321,10 @@ an exit node in another profile.
 A DNS route binding sends queries for a suffix through one selected profile:
 
 ```text
-tailmix dns routes list [--available] [--json]
-tailmix dns routes bind --profile <name> <domain>... [--replace] [--json]
-tailmix dns routes unbind <domain>... [--profile <name>] [--json]
-tailmix dns routes set --profile <name> --accept-all=<true|false> [--json]
+anyscalectl dns routes list [--available] [--json]
+anyscalectl dns routes bind --profile <name> <domain>... [--replace] [--json]
+anyscalectl dns routes unbind <domain>... [--profile <name>] [--json]
+anyscalectl dns routes set --profile <name> --accept-all=<true|false> [--json]
 ```
 
 The mutation and precondition behavior matches IP route bindings. Domains are
@@ -339,14 +339,14 @@ semantics, so DNS labels are not incorrectly restricted to hostname syntax.
 `set --accept-all=true` follows the profile's complete current and future DNS
 route configuration: its MagicDNS suffix, split-DNS routes, and Tailscale's
 configured default/fallback resolver behavior. It does not import the profile's
-search domains; `tailmix dns search` remains the only way to change the OS
+search domains; `anyscalectl dns search` remains the only way to change the OS
 search list. Setting the flag to `false` removes only the profile-wide import
 policy and retains exact suffix bindings.
 
 Each active profile contributes observed DNS capabilities from its netmap:
 
-- Its MagicDNS suffix, which tailmix can answer from that profile's node data.
-- Its split-DNS routes and resolver descriptors, which tailmix can forward
+- Its MagicDNS suffix, which anyscale can answer from that profile's node data.
+- Its split-DNS routes and resolver descriptors, which anyscale can forward
   through that profile.
 
 A binding is installed only when the selected profile currently has an equal
@@ -396,11 +396,11 @@ Search domains are daemon-wide ordered policy, not profile names or aliases.
 The default list is empty, preserving fully qualified MagicDNS behavior.
 
 ```text
-tailmix dns search list [--json]
-tailmix dns search set <domain>... [--json]
-tailmix dns search add <domain>... [--json]
-tailmix dns search remove <domain>... [--json]
-tailmix dns search clear [--json]
+anyscalectl dns search list [--json]
+anyscalectl dns search set <domain>... [--json]
+anyscalectl dns search add <domain>... [--json]
+anyscalectl dns search remove <domain>... [--json]
+anyscalectl dns search clear [--json]
 ```
 
 `set` atomically replaces the desired list in the given order. `add` appends
@@ -413,7 +413,7 @@ A desired search domain is installed only while it is equal to or below one
 effective DNS route, whether that route is an explicit binding or an
 unambiguous automatic MagicDNS route. This matters because on systems such as
 Linux with `systemd-resolved`, a search domain also routes matching queries to
-tailmix's DNS service. tailmix must not capture an arbitrary suffix without a
+anyscale's DNS service. anyscale must not capture an arbitrary suffix without a
 known query path.
 
 Desired domains that are not currently covered remain persisted but have
@@ -432,13 +432,13 @@ ORDER  DOMAIN               PROFILE  STATE
 
 The configured order is passed to the OS unchanged after filtering unavailable
 domains. Short-name expansion and collision behavior then follow the host
-resolver's normal search-list semantics. tailmix does not inspect a short name
+resolver's normal search-list semantics. anyscale does not inspect a short name
 and choose a profile itself.
 
 ### `profiles list`
 
 ```text
-tailmix profiles list [--all] [--json]
+anyscalectl profiles list [--all] [--json]
 ```
 
 The human-readable output is stable enough for people, not scripts:
@@ -457,7 +457,7 @@ online. Removed profile tombstones are included only with `--all`.
 ### `profiles show`
 
 ```text
-tailmix profiles show <name> [--json]
+anyscalectl profiles show <name> [--json]
 ```
 
 The result includes:
@@ -476,7 +476,7 @@ An auth key is never returned.
 ### `profiles add`
 
 ```text
-tailmix profiles add <name> \
+anyscalectl profiles add <name> \
   [--hostname <hostname>] \
   [--state-dir <directory>] \
   [--auth-key-env <name> | --auth-key-file <path|->] \
@@ -506,14 +506,14 @@ the user at the normal profile-local command:
 
 ```text
 Profile "work" added; login required.
-Run: tailmix ts --profile work up
+Run: anyscalectl ts --profile work up
 ```
 
 Alternative coordination servers are selected by the profile-local upstream
 command and persisted in native Tailscale state:
 
 ```text
-tailmix ts --profile work login \
+anyscalectl ts --profile work login \
   --login-server=https://headscale.example.com
 ```
 
@@ -524,9 +524,9 @@ stable ID, state directory, and effective-IP leases unless it was purged.
 ### `profiles rename` and `set`
 
 ```text
-tailmix profiles rename <name> <new-name>
+anyscalectl profiles rename <name> <new-name>
 
-tailmix profiles set <name> \
+anyscalectl profiles set <name> \
   --hostname <hostname> \
   [--json]
 ```
@@ -536,7 +536,7 @@ separate, offline administrative operation and should not be hidden inside a
 live update.
 
 `rename` updates only the local control-plane index; the stable ID and running
-engine do not change. `set` changes the Tailmix-owned hostname. Changing it
+engine do not change. `set` changes the Anyscale-owned hostname. Changing it
 restarts only the selected profile after persisting the new desired
 configuration. The command reports that brief profile-local disruption before
 applying it. Native Tailscale settings, including the login server, remain in
@@ -545,9 +545,9 @@ the profile's Tailscale state and are preserved by that restart.
 ### `profiles enable`, `disable`, and `restart`
 
 ```text
-tailmix profiles enable <name>
-tailmix profiles disable <name>
-tailmix profiles restart <name>
+anyscalectl profiles enable <name>
+anyscalectl profiles disable <name>
+anyscalectl profiles restart <name>
 ```
 
 `enable` persists the enabled state and starts the profile. `disable` persists
@@ -565,8 +565,8 @@ disabled profile returns a conflict and suggests `enable`.
 ### `profiles remove`
 
 ```text
-tailmix profiles remove <name>
-tailmix profiles remove <name> --purge --yes
+anyscalectl profiles remove <name>
+anyscalectl profiles remove <name> --purge --yes
 ```
 
 The default operation is deliberately reversible:
@@ -631,14 +631,14 @@ Initial codes should include `invalid_request`, `profile_exists`,
 The daemon serves HTTP/JSON over a dedicated Unix socket:
 
 ```text
-<socket-dir>/tailmixd.sock
+<socket-dir>/anyscaled.sock
 ```
 
 This socket is separate from each profile's hashed LocalAPI socket. The CLI
 must never edit the state JSON directly.
 
 Local read requests use the normal local socket access policy, so commands such
-as `tailmix status` and the various `list` commands do not require root.
+as `anyscalectl status` and the various `list` commands do not require root.
 Mutations require the connecting UID to be root. The server checks peer
 credentials rather than relying on filesystem mode alone. On platforms without
 Unix peer credentials, the socket remains owner-only. A future daemon-wide
@@ -690,8 +690,8 @@ The profile resource separates desired state from observed state:
 {
   "id": "p_01k2x7vq3c8m",
   "name": "work",
-  "stateDir": "/var/db/tailmix/profiles/p_01k2x7vq3c8m",
-  "hostname": "tailmix-a2c123",
+  "stateDir": "/var/db/anyscale/profiles/p_01k2x7vq3c8m",
+  "hostname": "anyscale-a2c123",
   "enabled": true,
   "removed": false,
   "acceptAllRoutes": true,
@@ -699,18 +699,18 @@ The profile resource separates desired state from observed state:
   "runtimeState": "running",
   "backendState": "Running",
   "magicDnsSuffix": "example.ts.net",
-  "selfDnsName": "tailmix-a2c123.example.ts.net",
+  "selfDnsName": "anyscale-a2c123.example.ts.net",
   "selfIps": ["100.64.0.10", "fd7a:115c:a1e0::10"],
   "peerCount": 12,
   "shieldsUp": false,
   "authUrl": "",
-  "localApiSocket": "/var/run/tailmix/p_01k2x7vq3c8m.sock",
+  "localApiSocket": "/var/run/anyscale/p_01k2x7vq3c8m.sock",
   "lastError": ""
 }
 ```
 
 `runtimeState` is one of `disabled`, `starting`, `needs-login`, `running`,
-`stopping`, or `error`. It is tailmix lifecycle state; `backendState` is the
+`stopping`, or `error`. It is anyscale lifecycle state; `backendState` is the
 profile's upstream Tailscale state.
 
 IP and DNS route resources report the persisted binding and its current
@@ -880,7 +880,7 @@ unambiguous automatic MagicDNS routes. The longest suffix wins across tiers;
 the tier breaks ties for the same suffix. A desired exact binding acts as
 either an installed route or a fail-closed waiting barrier for its suffix.
 
-MagicDNS routes terminate in tailmix's aggregate authoritative resolver.
+MagicDNS routes terminate in anyscale's aggregate authoritative resolver.
 Split-DNS and accepted default/fallback resolution terminate in profile-scoped
 forwarders that reuse Tailscale's resolver behavior with dials bound to the
 selected engine. A single shared dialer cannot be used because resolver IPs can
@@ -1063,7 +1063,7 @@ Auth key material is never added to `state.State`.
 ### Slice 1: management reads and lifecycle foundation
 
 - Add control socket client/server packages.
-- Add `tailmix profiles list` and `show`.
+- Add `anyscalectl profiles list` and `show`.
 - Add passive per-profile status and per-profile errors.
 - Introduce the supervisor and permanent update stream while preserving static
   startup behavior.

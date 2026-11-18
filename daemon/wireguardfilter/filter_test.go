@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"github.com/tailscale/wireguard-go/tun"
 	"tailscale.com/net/packet"
 	"tailscale.com/types/ipproto"

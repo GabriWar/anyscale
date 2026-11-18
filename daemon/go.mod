@@ -1,4 +1,4 @@
-module github.com/maisem/tailmix
+module github.com/gabriwar/anyscale/daemon
 
 go 1.27.3
 

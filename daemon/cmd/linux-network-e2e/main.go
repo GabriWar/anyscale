@@ -30,9 +30,9 @@ func parseOptions(args []string) (options, bool, error) {
 	var opts options
 	var seconds float64
 	var removePrivate bool
-	fs.StringVar(&opts.binaryDir, "binary-dir", "", "directory containing static Linux tailmix and tailmixd")
+	fs.StringVar(&opts.binaryDir, "binary-dir", "", "directory containing static Linux anyscale and anyscaled")
 	fs.Float64Var(&seconds, "timeout", 720, "overall test deadline in seconds")
-	fs.BoolVar(&opts.cleanup, "cleanup", false, "remove only exact TAILMIX_E2E_RUN_ID-labeled test resources")
+	fs.BoolVar(&opts.cleanup, "cleanup", false, "remove only exact ANYSCALE_E2E_RUN_ID-labeled test resources")
 	fs.BoolVar(&removePrivate, "remove-private", false, "internal: empty the exact private /cleanup mount")
 	if err := fs.Parse(args); err != nil || fs.NArg() != 0 {
 		return opts, false, failure("invalid arguments")
@@ -68,7 +68,7 @@ func runMain(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
 		fmt.Fprintln(stdout, "Usage: linux-network-e2e [--binary-dir DIR] [--timeout SECONDS] [--cleanup]")
 		fmt.Fprintln(stdout, "Run real isolated Linux networking tests (default timeout: 720 seconds).")
-		fmt.Fprintln(stdout, "--cleanup requires an explicit TAILMIX_E2E_RUN_ID.")
+		fmt.Fprintln(stdout, "--cleanup requires an explicit ANYSCALE_E2E_RUN_ID.")
 		return 0
 	}
 	opts, removePrivate, err := parseOptions(args)
@@ -89,7 +89,7 @@ func runMain(args []string, stdout, stderr io.Writer) int {
 		ctx, cancel := context.WithTimeout(ctx, min(opts.timeout, 60*time.Second))
 		defer cancel()
 		r := &rig{runner: runner{ctx}}
-		if err := guarded(func() { cleanupRun(os.Getenv("TAILMIX_E2E_RUN_ID"), r.docker) }); err != nil {
+		if err := guarded(func() { cleanupRun(os.Getenv("ANYSCALE_E2E_RUN_ID"), r.docker) }); err != nil {
 			fmt.Fprintln(stderr, "linux-network: FAIL [labeled cleanup]")
 			return 1
 		}

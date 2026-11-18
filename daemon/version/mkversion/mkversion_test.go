@@ -115,7 +115,7 @@ func TestInfoFromUsesCleanSemverTag(t *testing.T) {
 	}
 	runGit(t, root, "init")
 	runGit(t, root, "add", versionFile)
-	runGit(t, root, "-c", "user.name=Tailmix Test", "-c", "user.email=tailmix@example.invalid", "commit", "-m", "version target")
+	runGit(t, root, "-c", "user.name=Anyscale Test", "-c", "user.email=anyscale@example.invalid", "commit", "-m", "version target")
 
 	info, err := InfoFrom(root)
 	if err != nil {
@@ -162,7 +162,7 @@ func TestInfoFromTaggedReleaseDoesNotRequireVersionFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	runGit(t, root, "add", "README.md")
-	runGit(t, root, "-c", "user.name=Tailmix Test", "-c", "user.email=tailmix@example.invalid", "commit", "-m", "initial commit")
+	runGit(t, root, "-c", "user.name=Anyscale Test", "-c", "user.email=anyscale@example.invalid", "commit", "-m", "initial commit")
 	runGit(t, root, "tag", "v3.2.1")
 
 	info, err := InfoFrom(root)

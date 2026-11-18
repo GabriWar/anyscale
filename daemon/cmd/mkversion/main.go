@@ -1,11 +1,11 @@
-// Command mkversion prints linker flags for a versioned Tailmix build.
+// Command mkversion prints linker flags for a versioned Anyscale build.
 package main
 
 import (
 	"fmt"
 	"log"
 
-	"github.com/maisem/tailmix/version/mkversion"
+	"github.com/gabriwar/anyscale/daemon/version/mkversion"
 )
 
 func main() {
@@ -13,7 +13,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("-X github.com/maisem/tailmix/version.shortStamp=%s ", info.Short)
-	fmt.Printf("-X github.com/maisem/tailmix/version.longStamp=%s ", info.Long)
-	fmt.Printf("-X github.com/maisem/tailmix/version.gitCommitStamp=%s\n", info.GitHash)
+	fmt.Printf("-X github.com/gabriwar/anyscale/daemon/version.shortStamp=%s ", info.Short)
+	fmt.Printf("-X github.com/gabriwar/anyscale/daemon/version.longStamp=%s ", info.Long)
+	fmt.Printf("-X github.com/gabriwar/anyscale/daemon/version.gitCommitStamp=%s\n", info.GitHash)
 }

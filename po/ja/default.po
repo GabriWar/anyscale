@@ -1,8 +1,8 @@
-# Trayscale Japanese catalog.
+# Anyscale Japanese catalog.
 msgid ""
 msgstr ""
-"Project-Id-Version: trayscale\n"
-"Report-Msgid-Bugs-To: https://github.com/DeedleFake/trayscale/issues\n"
+"Project-Id-Version: anyscale\n"
+"Report-Msgid-Bugs-To: https://github.com/GabriWar/anyscale/issues\n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -300,8 +300,8 @@ msgstr "このマシン: %v"
 msgid "Toggle exit node"
 msgstr "出口ノードを切り替え"
 
-msgid "Trayscale"
-msgstr "Trayscale"
+msgid "Anyscale"
+msgstr "Anyscale"
 
 msgid "UDP"
 msgstr "UDP"

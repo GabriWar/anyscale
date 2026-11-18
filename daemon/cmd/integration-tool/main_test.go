@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 func TestKeygen(t *testing.T) {

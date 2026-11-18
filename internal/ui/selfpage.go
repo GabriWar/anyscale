@@ -28,7 +28,7 @@ import (
 var selfPageXML string
 
 var selfPageClass = gobj.Widget[SelfPage](gobj.WidgetSpec{
-	Name:     "TrayscaleSelfPage",
+	Name:     "AnyscaleSelfPage",
 	Parent:   adw.BinGLibType,
 	Template: selfPageXML,
 })
@@ -126,7 +126,7 @@ func (page *SelfPage) init(a *App, status *tsutil.IPNStatus) {
 
 	page.connectSwitch(page.AdvertiseExitNodeRow, "advertise exit node", func(s bool) error {
 		if s && a.exitNodeActive() {
-			// tailmix owns exit node use; stop it first.
+			// anyscale owns exit node use; stop it first.
 			a.setExitNode("", nil)
 		}
 		return a.client().AdvertiseExitNode(context.TODO(), s)
@@ -134,7 +134,7 @@ func (page *SelfPage) init(a *App, status *tsutil.IPNStatus) {
 	page.connectSwitch(page.AllowLANAccessRow, "allow LAN access", func(s bool) error {
 		return a.client().AllowLANAccess(context.TODO(), s)
 	})
-	// tailmix keeps route acceptance on for every tailnet and decides
+	// anyscale keeps route acceptance on for every tailnet and decides
 	// which routes and DNS to use itself, so these would do nothing.
 	page.AcceptRoutesRow.SetVisible(false)
 	page.AcceptDNSRow.SetVisible(false)

@@ -1,4 +1,4 @@
-// Package mix connects anyscale to the tailmix daemon, which runs one
+// Package mix connects anyscale to the anyscale daemon, which runs one
 // Tailscale node per tailnet on the same machine.
 //
 // Reading the daemon's state works as any user. Changing it, such as
@@ -12,17 +12,17 @@ import (
 	"context"
 	"slices"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
 )
 
-// Tailnet is one tailmix profile, which is one tailnet.
+// Tailnet is one anyscale profile, which is one tailnet.
 type Tailnet = controlapi.Profile
 
 // Status is a snapshot of every tailnet and the daemon-wide policy.
 type Status = controlapi.Status
 
-// Client reads state from the tailmix daemon. Its zero value is not
+// Client reads state from the anyscale daemon. Its zero value is not
 // usable. Use [NewClient].
 type Client struct {
 	api       *controlapi.Client
@@ -30,7 +30,7 @@ type Client struct {
 }
 
 // NewClient returns a client for the daemon whose sockets are in
-// socketDir. An empty socketDir uses tailmix's default.
+// socketDir. An empty socketDir uses anyscale's default.
 func NewClient(socketDir string) *Client {
 	if socketDir == "" {
 		socketDir = profilesocket.DefaultDir()

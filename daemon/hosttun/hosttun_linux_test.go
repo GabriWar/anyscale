@@ -28,9 +28,9 @@ func noOpLinuxOps() linuxNetlinkOps {
 func testLinuxHost(states ...linuxInstalledState) *linuxHost {
 	stateIndex := 0
 	h := &linuxHost{
-		name: "tailmix0",
+		name: "anyscale0",
 		link: &netlink.Dummy{LinkAttrs: netlink.LinkAttrs{
-			Name:  "tailmix0",
+			Name:  "anyscale0",
 			Index: 42,
 		}},
 		logf: func(string, ...any) {},

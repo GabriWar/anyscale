@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/gaissmai/bart"
-	"github.com/maisem/tailmix/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
 	"tailscale.com/util/dnsname"
 )
 

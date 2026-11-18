@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	tailmixdns "github.com/maisem/tailmix/dns"
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/packetmap"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/state"
-	tailmixversion "github.com/maisem/tailmix/version"
+	anyscaledns "github.com/gabriwar/anyscale/daemon/dns"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/packetmap"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/state"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
 	"tailscale.com/net/packet"
 	"tailscale.com/types/dnstype"
 )
@@ -23,7 +23,7 @@ func TestVersion(t *testing.T) {
 	if err := run(context.Background(), []string{"--version"}, &stdout, &stderr); err != nil {
 		t.Fatal(err)
 	}
-	want := tailmixversion.GetMeta().Format("tailmixd") + "\n"
+	want := anyscaleversion.GetMeta().Format("anyscaled") + "\n"
 	if got := stdout.String(); got != want {
 		t.Fatalf("version output = %q, want %q", got, want)
 	}
@@ -33,14 +33,14 @@ func TestVersion(t *testing.T) {
 }
 
 func TestParseProfileSpecUsesMagicDNSSuffixAndAuthKeyEnv(t *testing.T) {
-	got, err := parseProfileSpec("id=work,dir=/tmp/work,hostname=tailmix-work,suffix=example.ts.net,auth-key-env=WORK_AUTHKEY")
+	got, err := parseProfileSpec("id=work,dir=/tmp/work,hostname=anyscale-work,suffix=example.ts.net,auth-key-env=WORK_AUTHKEY")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.ID != "work" || got.Alias != "work" {
 		t.Fatalf("profile identity = id %q alias %q, want work/work", got.ID, got.Alias)
 	}
-	if got.Dir != "/tmp/work" || got.Hostname != "tailmix-work" {
+	if got.Dir != "/tmp/work" || got.Hostname != "anyscale-work" {
 		t.Fatalf("profile storage = dir %q hostname %q", got.Dir, got.Hostname)
 	}
 	if got.MagicDNSSuffix != "example.ts.net" || got.AuthKeyEnv != "WORK_AUTHKEY" {
@@ -72,8 +72,8 @@ func TestResolveProfilesMergesFlagsWithPersistentState(t *testing.T) {
 		Profiles: []state.Profile{{
 			ID:             "work",
 			Alias:          "old",
-			StateDir:       "/var/lib/tailmix/work",
-			Hostname:       "tailmix-old",
+			StateDir:       "/var/lib/anyscale/work",
+			Hostname:       "anyscale-old",
 			MagicDNSSuffix: "old.ts.net",
 		}},
 	}, []profileSpec{{
@@ -94,7 +94,7 @@ func TestResolveProfilesMergesFlagsWithPersistentState(t *testing.T) {
 	if got[0].State.ID == "work" {
 		work = got[0]
 	}
-	if work.State.Alias != "work" || work.State.StateDir != "/var/lib/tailmix/work" || work.State.Hostname != "tailmix-old" {
+	if work.State.Alias != "work" || work.State.StateDir != "/var/lib/anyscale/work" || work.State.Hostname != "anyscale-old" {
 		t.Fatalf("merged work profile = %+v", work.State)
 	}
 	if work.State.MagicDNSSuffix != "new.ts.net" || work.AuthKeyEnv != "WORK_AUTHKEY" {
@@ -104,7 +104,7 @@ func TestResolveProfilesMergesFlagsWithPersistentState(t *testing.T) {
 	if home.State.ID != "home" {
 		home = got[1]
 	}
-	if home.State.Alias != "home" || home.State.StateDir == "" || home.State.Hostname != "tailmix-home" {
+	if home.State.Alias != "home" || home.State.StateDir == "" || home.State.Hostname != "anyscale-home" {
 		t.Fatalf("defaulted home profile = %+v", home.State)
 	}
 }
@@ -273,18 +273,18 @@ func TestEnsureHostIPsFallsBackWhenPoolOffset53IsLeased(t *testing.T) {
 }
 
 func TestLeaseTargetsIncludesPeersAndServicesInStableOrder(t *testing.T) {
-	statuses := []tailmixprofile.Status{{
+	statuses := []anyscaleprofile.Status{{
 		ProfileID:  "work",
 		SelfNodeID: "self",
 		SelfIPs:    []netip.Addr{netip.MustParseAddr("100.64.0.10")},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID:       "peer-b",
 			TailscaleIPs: []netip.Addr{netip.MustParseAddr("100.64.0.2")},
 		}, {
 			NodeID:       "peer-a",
 			TailscaleIPs: []netip.Addr{netip.MustParseAddr("100.64.0.1")},
 		}},
-		Services: []tailmixprofile.ServiceStatus{{
+		Services: []anyscaleprofile.ServiceStatus{{
 			Name:         "svc:api",
 			TailscaleIPs: []netip.Addr{netip.MustParseAddr("100.100.0.1")},
 		}},
@@ -332,7 +332,7 @@ func TestAssignEffectiveIPsPreservesDormantLeases(t *testing.T) {
 		SyntheticPoolV6: "fd6d:6e65:7400::/120",
 		Leases:          []state.EffectiveLease{dormant},
 	}
-	statuses := []tailmixprofile.Status{{
+	statuses := []anyscaleprofile.Status{{
 		ProfileID:  "work",
 		SelfNodeID: "self",
 		SelfIPs:    []netip.Addr{netip.MustParseAddr("100.64.0.10")},
@@ -358,18 +358,18 @@ func TestAssignEffectiveIPsPreservesDormantLeases(t *testing.T) {
 
 func TestAssignEffectiveIPsSynthesizesIPv6CollisionsFromIPv6Pool(t *testing.T) {
 	canonical := netip.MustParseAddr("fd7a:115c:a1e0::10")
-	statuses := []tailmixprofile.Status{{
+	statuses := []anyscaleprofile.Status{{
 		ProfileID:  "home",
 		SelfNodeID: "home-self",
 		SelfIPs:    []netip.Addr{netip.MustParseAddr("fd7a:115c:a1e0::1")},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID: "home-peer", TailscaleIPs: []netip.Addr{canonical},
 		}},
 	}, {
 		ProfileID:  "work",
 		SelfNodeID: "work-self",
 		SelfIPs:    []netip.Addr{netip.MustParseAddr("fd7a:115c:a1e0::2")},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID: "work-peer", TailscaleIPs: []netip.Addr{canonical},
 		}},
 	}}
@@ -388,11 +388,11 @@ func TestAssignEffectiveIPsSynthesizesIPv6CollisionsFromIPv6Pool(t *testing.T) {
 func TestTunConfigUsesSharedNATRouteSource(t *testing.T) {
 	canonicalSelf := netip.MustParseAddr("100.64.0.10")
 	canonicalPeer := netip.MustParseAddr("100.64.0.20")
-	statuses := []tailmixprofile.Status{{
+	statuses := []anyscaleprofile.Status{{
 		ProfileID:  "home",
 		SelfNodeID: "home-self",
 		SelfIPs:    []netip.Addr{canonicalSelf},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID:       "home-peer",
 			TailscaleIPs: []netip.Addr{canonicalPeer},
 		}},
@@ -400,7 +400,7 @@ func TestTunConfigUsesSharedNATRouteSource(t *testing.T) {
 		ProfileID:  "work",
 		SelfNodeID: "work-self",
 		SelfIPs:    []netip.Addr{canonicalSelf},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID:       "work-peer",
 			TailscaleIPs: []netip.Addr{canonicalPeer},
 		}},
@@ -432,7 +432,7 @@ func TestTunConfigUsesSharedNATRouteSource(t *testing.T) {
 		switch route.Destination.Addr() {
 		case st.DNSIP:
 			foundSyntheticDNSRoute = !route.Optional
-		case tailmixdns.ServiceIP():
+		case anyscaledns.ServiceIP():
 			foundQuad100Route = route.Optional
 		}
 	}
@@ -454,13 +454,13 @@ func TestTunConfigUsesSharedNATRouteSource(t *testing.T) {
 func TestTunDNSConfigUsesEffectiveAddresses(t *testing.T) {
 	canonicalSelf := netip.MustParseAddr("100.64.0.10")
 	canonicalPeer := netip.MustParseAddr("100.64.0.20")
-	statuses := []tailmixprofile.Status{{
+	statuses := []anyscaleprofile.Status{{
 		ProfileID:      "home",
 		MagicDNSSuffix: "home.ts.net",
 		SelfNodeID:     "home-self",
-		SelfDNSName:    "tailmix.home.ts.net",
+		SelfDNSName:    "anyscale.home.ts.net",
 		SelfIPs:        []netip.Addr{canonicalSelf},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID:       "home-peer",
 			DNSName:      "db.home.ts.net",
 			TailscaleIPs: []netip.Addr{canonicalPeer},
@@ -469,9 +469,9 @@ func TestTunDNSConfigUsesEffectiveAddresses(t *testing.T) {
 		ProfileID:      "work",
 		MagicDNSSuffix: "work.ts.net",
 		SelfNodeID:     "work-self",
-		SelfDNSName:    "tailmix.work.ts.net",
+		SelfDNSName:    "anyscale.work.ts.net",
 		SelfIPs:        []netip.Addr{canonicalSelf},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID:       "work-peer",
 			DNSName:      "db.work.ts.net",
 			TailscaleIPs: []netip.Addr{canonicalPeer},
@@ -520,7 +520,7 @@ func TestTunDNSConfigUsesEffectiveAddresses(t *testing.T) {
 	if len(wantByName) != 0 {
 		t.Fatalf("missing peer MagicDNS records: %v", wantByName)
 	}
-	if !hasDNSRecord(records, "tailmix.home.ts.net", st.NATIP) || !hasDNSRecord(records, "tailmix.work.ts.net", st.NATIP) {
+	if !hasDNSRecord(records, "anyscale.home.ts.net", st.NATIP) || !hasDNSRecord(records, "anyscale.work.ts.net", st.NATIP) {
 		t.Fatalf("self MagicDNS records do not point at shared NAT IP %v: %v", st.NATIP, records)
 	}
 }
@@ -528,7 +528,7 @@ func TestTunDNSConfigUsesEffectiveAddresses(t *testing.T) {
 func TestTUNPlanTreatsServicesLikeNodesAcrossProfiles(t *testing.T) {
 	canonicalV4 := netip.MustParseAddr("100.100.1.10")
 	canonicalV6 := netip.MustParseAddr("fd7a:115c:a1e0::110")
-	statuses := []tailmixprofile.Status{
+	statuses := []anyscaleprofile.Status{
 		{
 			ProfileID:      "home",
 			MagicDNSSuffix: "home.ts.net",
@@ -537,7 +537,7 @@ func TestTUNPlanTreatsServicesLikeNodesAcrossProfiles(t *testing.T) {
 				netip.MustParseAddr("100.64.0.1"),
 				netip.MustParseAddr("fd7a:115c:a1e0::1"),
 			},
-			Services: []tailmixprofile.ServiceStatus{{
+			Services: []anyscaleprofile.ServiceStatus{{
 				Name:         "svc:api",
 				DNSName:      "api.home.ts.net",
 				TailscaleIPs: []netip.Addr{canonicalV4, canonicalV6},
@@ -551,7 +551,7 @@ func TestTUNPlanTreatsServicesLikeNodesAcrossProfiles(t *testing.T) {
 				netip.MustParseAddr("100.64.0.2"),
 				netip.MustParseAddr("fd7a:115c:a1e0::2"),
 			},
-			Services: []tailmixprofile.ServiceStatus{{
+			Services: []anyscaleprofile.ServiceStatus{{
 				Name:         "svc:api",
 				DNSName:      "api.work.ts.net",
 				TailscaleIPs: []netip.Addr{canonicalV4, canonicalV6},
@@ -598,7 +598,7 @@ func TestTUNPlanTreatsServicesLikeNodesAcrossProfiles(t *testing.T) {
 		}
 	}
 
-	withoutServices := append([]tailmixprofile.Status(nil), statuses...)
+	withoutServices := append([]anyscaleprofile.Status(nil), statuses...)
 	for i := range withoutServices {
 		withoutServices[i].Services = nil
 	}
@@ -638,19 +638,19 @@ func TestTUNPlanKeepsMagicDNSMoreSpecificThanExplicitDefault(t *testing.T) {
 			Domain: ".", ProfileID: "work",
 		}},
 	}
-	statuses := []tailmixprofile.Status{
+	statuses := []anyscaleprofile.Status{
 		{
 			ProfileID:      "home",
 			BackendState:   "Running",
 			MagicDNSSuffix: "home.example",
 			SelfNodeID:     "home-self",
-			SelfDNSName:    "tailmix-home.home.example",
+			SelfDNSName:    "anyscale-home.home.example",
 			SelfIPs:        []netip.Addr{netip.MustParseAddr("100.64.0.1")},
 		},
 		{
 			ProfileID:    "work",
 			BackendState: "Running",
-			DNSRoutes: []tailmixprofile.DNSRouteStatus{{
+			DNSRoutes: []anyscaleprofile.DNSRouteStatus{{
 				Domain: ".", Source: "default", Resolvers: []*dnstype.Resolver{{Addr: "9.9.9.9"}},
 			}},
 		},
@@ -660,7 +660,7 @@ func TestTUNPlanKeepsMagicDNSMoreSpecificThanExplicitDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasDNSRecord(plan.Records, "tailmix-home.home.example", plan.State.NATIP) {
+	if !hasDNSRecord(plan.Records, "anyscale-home.home.example", plan.State.NATIP) {
 		t.Fatalf("MagicDNS record was dropped by the default route: %v", plan.Records)
 	}
 	if len(plan.DNSConfig.Routes) != 2 ||
@@ -687,18 +687,18 @@ func TestTUNPlanTracksPeerAddAndRemoveAcrossNetmapUpdates(t *testing.T) {
 			EffectiveIP: netip.MustParseAddr("fd7a:115c:a1e0::2"),
 		}},
 	}
-	baseStatus := tailmixprofile.Status{
+	baseStatus := anyscaleprofile.Status{
 		ProfileID:      "home",
 		MagicDNSSuffix: "home.example",
 		SelfNodeID:     "home-self",
-		SelfDNSName:    "tailmix-home.home.example",
+		SelfDNSName:    "anyscale-home.home.example",
 		SelfIPs: []netip.Addr{
 			netip.MustParseAddr("100.64.0.1"),
 			netip.MustParseAddr("fd7a:115c:a1e0::1"),
 		},
 	}
 
-	initial, err := buildTUNPlan(baseState, []tailmixprofile.Status{baseStatus})
+	initial, err := buildTUNPlan(baseState, []anyscaleprofile.Status{baseStatus})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -707,7 +707,7 @@ func TestTUNPlanTracksPeerAddAndRemoveAcrossNetmapUpdates(t *testing.T) {
 	}
 
 	withPeer := baseStatus
-	withPeer.Peers = []tailmixprofile.PeerStatus{{
+	withPeer.Peers = []anyscaleprofile.PeerStatus{{
 		NodeID:  "peer-node",
 		DNSName: "peer.home.example",
 		TailscaleIPs: []netip.Addr{
@@ -715,7 +715,7 @@ func TestTUNPlanTracksPeerAddAndRemoveAcrossNetmapUpdates(t *testing.T) {
 			netip.MustParseAddr("fd7a:115c:a1e0::2"),
 		},
 	}}
-	added, err := buildTUNPlan(initial.State, []tailmixprofile.Status{withPeer})
+	added, err := buildTUNPlan(initial.State, []anyscaleprofile.Status{withPeer})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -742,7 +742,7 @@ func TestTUNPlanTracksPeerAddAndRemoveAcrossNetmapUpdates(t *testing.T) {
 		t.Fatalf("MagicDNS records after add = %v, want peer -> [%v, %v]", added.Records, peerV4, peerV6)
 	}
 
-	removed, err := buildTUNPlan(added.State, []tailmixprofile.Status{baseStatus})
+	removed, err := buildTUNPlan(added.State, []anyscaleprofile.Status{baseStatus})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -823,7 +823,7 @@ func TestTUNPlanInstallsSelectedExitNodeDefaults(t *testing.T) {
 			PeerIP:    netip.MustParseAddr("100.64.0.20"),
 		},
 	}
-	status := tailmixprofile.Status{
+	status := anyscaleprofile.Status{
 		ProfileID:    "work",
 		BackendState: "Running",
 		ExitNodeID:   "exit-node",
@@ -833,7 +833,7 @@ func TestTUNPlanInstallsSelectedExitNodeDefaults(t *testing.T) {
 			netip.MustParseAddr("fd7a:115c:a1e0::10"),
 		},
 	}
-	plan, err := buildTUNPlan(st, []tailmixprofile.Status{status})
+	plan, err := buildTUNPlan(st, []anyscaleprofile.Status{status})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -875,7 +875,7 @@ func TestTUNPlanInstallsSelectedExitNodeDefaults(t *testing.T) {
 
 	pending := status
 	pending.ExitNodeID = ""
-	plan, err = buildTUNPlan(st, []tailmixprofile.Status{pending})
+	plan, err = buildTUNPlan(st, []anyscaleprofile.Status{pending})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -892,7 +892,7 @@ func TestTUNPlanInstallsSelectedExitNodeDefaults(t *testing.T) {
 	}
 }
 
-func hasDNSRecord(records []tailmixdns.Record, name string, ip netip.Addr) bool {
+func hasDNSRecord(records []anyscaledns.Record, name string, ip netip.Addr) bool {
 	for _, record := range records {
 		if record.Name == name && record.EffectiveIP == ip {
 			return true

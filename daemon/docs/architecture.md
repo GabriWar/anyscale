@@ -1,8 +1,8 @@
-# tailmix architecture
+# anyscale architecture
 
 > Implementation snapshot: September 2026
 
-tailmix runs an independent network engine for every profile, then joins their
+anyscale runs an independent network engine for every profile, then joins their
 packet paths behind one host TUN. An engine is either an embedded Tailscale node
 or a userspace raw WireGuard device. Stable local addresses remove cross-profile
 IP collisions. Translation restores each profile's canonical addresses before
@@ -14,7 +14,7 @@ on macOS or Linux.
 ## System overview
 
 There is no active-tailnet switch. The OS sees one interface and a
-collision-free set of effective peer and Tailscale Service addresses. tailmix
+collision-free set of effective peer and Tailscale Service addresses. anyscale
 selects a profile for each packet; upstream Tailscale continues to own
 authentication, netmaps, WireGuard, DERP, ACL-visible identity, and transport
 behavior.
@@ -23,7 +23,7 @@ behavior.
 flowchart LR
     OS["Host OS<br/>applications, routes, DNS"]
 
-    subgraph daemon["tailmixd"]
+    subgraph daemon["anyscaled"]
         API["Control API"]
         State["Persistent state"]
         Reconciler["Supervisor + reconciler"]
@@ -44,7 +44,7 @@ flowchart LR
 
     WorkTailnet["work tailnet"]
     HomeTailnet["home tailnet"]
-    CLI["tailmix CLI"]
+    CLI["anyscale CLI"]
 
     OS <--> TUN
     TUN <--> Mux
@@ -75,14 +75,14 @@ Three invariants keep the profiles isolated:
 
 ## Ownership boundaries
 
-tailmix carries focused [`tsnet`](../tsnet/README.md) and
+anyscale carries focused [`tsnet`](../tsnet/README.md) and
 [`netns`](../netns/README.md) forks. The former substitutes a channel-backed
 `Server.Tun` and exposes `Server.LocalBackend`; the latter publishes Darwin's
 physical underlay through the shared netmon state consumed by upstream
 Tailscale sockets. The daemon uses published Tailscale modules for the
 remaining engine, LocalAPI, credential, and transport behavior.
 
-| Concern | tailmix owns | Profile engine / upstream Tailscale owns |
+| Concern | anyscale owns | Profile engine / upstream Tailscale owns |
 | --- | --- | --- |
 | Host networking | Shared TUN, host addresses, selected routes | No direct host interface |
 | Addressing | Effective leases, host NAT addresses, profile selection, SNAT/DNAT | Canonical self, peer, and Service addresses from the netmap |
@@ -99,7 +99,7 @@ would for an ordinary Tailscale node.
 
 ## Address model
 
-Canonical addresses can collide across tailnets. tailmix leases a unique
+Canonical addresses can collide across tailnets. anyscale leases a unique
 effective address to each `(profile, target, canonical IP)` tuple and reserves
 one host NAT address per active address family. A target is either a peer node
 or a Tailscale Service.
@@ -161,7 +161,7 @@ local routes.
 | work engine replies | `100.64.0.42` | `100.64.0.1` |
 | Host receives | `100.127.0.8` | `100.127.0.1` |
 
-The values are illustrative. tailmix leaves the pool's prefix base unassigned,
+The values are illustrative. anyscale leaves the pool's prefix base unassigned,
 reserves the first available non-base address for host NAT, excludes it from
 target allocation, and selects it as the preferred source for host TUN routes.
 Host routes are installed only for active peers, visible Services, and selected
@@ -271,7 +271,7 @@ sequenceDiagram
 
 ## DNS path
 
-tailmix reuses Tailscale's DNS manager, resolver, and OS integration. A small
+anyscale reuses Tailscale's DNS manager, resolver, and OS integration. A small
 gVisor stack terminates UDP and TCP DNS packets inside the shared TUN at
 `100.100.100.100`.
 
@@ -293,7 +293,7 @@ records return effective addresses, and each profile's own name returns the
 shared host NAT address. A uniquely owned shared-in FQDN can receive an
 exact-name route without claiming its entire source suffix.
 
-For advertised split-DNS and default resolvers, tailmix creates a loopback
+For advertised split-DNS and default resolvers, anyscale creates a loopback
 forwarder tied to the chosen profile. Classic DNS and DNS-over-HTTPS connections
 therefore travel through that profile rather than the host's default network.
 
@@ -443,7 +443,7 @@ Remote logtail upload is disabled by default. `-log-upload` opts in, and
 
 | Surface | macOS | Linux |
 | --- | --- | --- |
-| TUN creation | Tailscale `tstun`, dynamic `utun*` | Tailscale `tstun`, default `tailmix0` |
+| TUN creation | Tailscale `tstun`, dynamic `utun*` | Tailscale `tstun`, default `anyscale0` |
 | Privileges | Root | Root or `CAP_NET_ADMIN` |
 | Profile LocalAPI | Unix sockets served by `ipnserver` | Unix sockets served by `ipnserver` |
 | Address and route application | `ifconfig` and `route` | Netlink |
@@ -462,8 +462,8 @@ and does not install host routes or DNS configuration.
 
 | Package | Responsibility |
 | --- | --- |
-| [`cmd/tailmixd`](../cmd/tailmixd/main.go) | Composition root, supervisor, flags, plan construction |
-| [`cmd/tailmix`](../cmd/tailmix/main.go) | Live management CLI and profile-scoped upstream Tailscale commands |
+| [`cmd/anyscaled`](../cmd/anyscaled/main.go) | Composition root, supervisor, flags, plan construction |
+| [`cmd/anyscalectl`](../cmd/anyscalectl/main.go) | Live management CLI and profile-scoped upstream Tailscale commands |
 | [`controlapi`](../controlapi/server.go) | Credential-checked daemon management API |
 | [`profile`](../profile/manager.go) | Engine abstraction, status, update watchers, tsnet adapter |
 | [`profilesocket`](../profilesocket/path.go) | Stable daemon and per-profile LocalAPI socket paths |
@@ -502,7 +502,7 @@ Deliberate current limits:
 
 - SOCKS mode is TCP-only;
 - policy does not provide cross-profile failover;
-- tailmix does not automatically bridge one tailnet into another;
+- anyscale does not automatically bridge one tailnet into another;
 - host networking, mapper, DNS, and disk updates do not share one transactional
   rollback boundary.
 

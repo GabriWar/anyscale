@@ -12,12 +12,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
 	"tailscale.com/ipn"
 )
 
-// fakeDaemon implements the parts of the tailmix control API that
+// fakeDaemon implements the parts of the anyscale control API that
 // anyscale uses. Calling anything else panics through the nil Backend.
 type fakeDaemon struct {
 	controlapi.Backend

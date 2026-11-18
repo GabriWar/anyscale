@@ -29,7 +29,7 @@ import (
 var mullvadPageXML string
 
 var mullvadPageClass = gobj.Widget[MullvadPage](gobj.WidgetSpec{
-	Name:     "TrayscaleMullvadPage",
+	Name:     "AnyscaleMullvadPage",
 	Parent:   adw.BinGLibType,
 	Template: mullvadPageXML,
 })
@@ -397,7 +397,7 @@ func (page *MullvadPage) getExitNodeRow(peer tailcfg.NodeView) *mullvadExitNodeR
 			}
 		}
 
-		// tailmix picks the exit node, which can take a password, so
+		// anyscale picks the exit node, which can take a password, so
 		// the switch follows once it's done.
 		var exit tailcfg.StableNodeID
 		if s {

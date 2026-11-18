@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/maisem/tailmix/wireguardcfg"
-	"github.com/maisem/tailmix/wireguardfilter"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardfilter"
 	"github.com/tailscale/wireguard-go/conn"
 	"github.com/tailscale/wireguard-go/device"
 	"github.com/tailscale/wireguard-go/tun"

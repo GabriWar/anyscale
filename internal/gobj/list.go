@@ -39,7 +39,7 @@ func itemType() types.GType {
 		var instInit gobject.InstanceInitFunc = func(*gobject.TypeInstance, *gobject.TypeClass) {}
 		var q gobject.TypeQuery
 		gobject.NewTypeQuery(gobject.ObjectGLibType(), &q)
-		items.gtype = gobject.TypeRegisterStaticSimple(q.Type, "TrayscaleListItem", q.ClassSize, &classInit, q.InstanceSize, &instInit, 0)
+		items.gtype = gobject.TypeRegisterStaticSimple(q.Type, "AnyscaleListItem", q.ClassSize, &classInit, q.InstanceSize, &instInit, 0)
 	})
 	return items.gtype
 }

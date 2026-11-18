@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Created with Cambalache 0.96.1 -->
-<interface domain="trayscale">
+<interface domain="anyscale">
   <!-- interface-name offlinepage.ui -->
   <requires lib="gtk" version="4.18"/>
   <requires lib="libadwaita" version="1.6"/>
-  <template class="TrayscaleOfflinePage" parent="AdwBin">
+  <template class="AnyscaleOfflinePage" parent="AdwBin">
     <property name="child">
       <object class="AdwStatusPage" id="Page">
         <property name="child">

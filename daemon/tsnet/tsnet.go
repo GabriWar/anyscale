@@ -28,7 +28,7 @@
 //
 // # Usage
 //
-//	import "github.com/maisem/tailmix/tsnet"
+//	import "github.com/gabriwar/anyscale/daemon/tsnet"
 //
 //	s := &tsnet.Server{
 //		Hostname: "my-service",
@@ -2218,7 +2218,7 @@ func (s *Server) Sys() *tsd.System {
 
 // LocalBackend returns the backend backing s.
 //
-// This is not a stable API. It exists so tailmix can serve Tailscale's native
+// This is not a stable API. It exists so anyscale can serve Tailscale's native
 // LocalAPI with ipnserver and its per-connection credential checks.
 func (s *Server) LocalBackend() (*ipnlocal.LocalBackend, error) {
 	if err := s.Start(); err != nil {

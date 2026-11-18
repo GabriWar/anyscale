@@ -21,7 +21,7 @@ import (
 )
 
 // Client talks to one tailscaled-compatible LocalAPI socket. With
-// tailmix, each tailnet has its own socket and so its own Client.
+// anyscale, each tailnet has its own socket and so its own Client.
 type Client struct {
 	lc local.Client
 
@@ -191,7 +191,7 @@ func (c *Client) SetUseExitNode(ctx context.Context, use bool, sel ExitNodeSelec
 
 // ExitNodeChoice returns the exit node to use when exit node use is
 // turned on with sel. It doesn't change anything, so that something
-// else, such as tailmix, can apply the choice. Without a previous exit
+// else, such as anyscale, can apply the choice. Without a previous exit
 // node, it falls back to the recommended one.
 func (c *Client) ExitNodeChoice(ctx context.Context, sel ExitNodeSelection) (tailcfg.StableNodeID, error) {
 	if sel == SelectPreviousExitNode {

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/maisem/tailmix/controlapi"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
 	"tailscale.com/safesocket"
 )
 
@@ -30,7 +30,7 @@ func TestControlServerAllowsReadsAndAuthorizesMutations(t *testing.T) {
 	if !safesocket.PlatformUsesPeerCreds() {
 		t.Skip("platform does not support Unix peer credentials")
 	}
-	socketDir, err := os.MkdirTemp("/tmp", "tailmix-control-test-")
+	socketDir, err := os.MkdirTemp("/tmp", "anyscale-control-test-")
 	if err != nil {
 		t.Fatal(err)
 	}

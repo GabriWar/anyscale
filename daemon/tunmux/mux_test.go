@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gaissmai/bart"
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/packetmap"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/packetmap"
 	"github.com/tailscale/wireguard-go/tun"
 	"tailscale.com/net/packet"
 )

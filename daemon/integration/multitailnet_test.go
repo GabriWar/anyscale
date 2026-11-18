@@ -4,7 +4,7 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/maisem/tailmix/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
 )
 
 func TestTwoTailnetsWithCollidingCanonicalIPsReceiveStableEffectiveIPs(t *testing.T) {

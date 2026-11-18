@@ -11,11 +11,11 @@ import (
 
 // TranslationDomain is the libintl / GtkBuilder gettext domain.
 // Embedded catalogs remain po/<lang>/default.po for gotext; at Init they
-// are compiled to <cache>/trayscale-locale/<lang>/LC_MESSAGES/trayscale.mo.
-const TranslationDomain = "trayscale"
+// are compiled to <cache>/anyscale-locale/<lang>/LC_MESSAGES/anyscale.mo.
+const TranslationDomain = "anyscale"
 
 const (
-	localeCacheName    = "trayscale-locale"
+	localeCacheName    = "anyscale-locale"
 	syntheticLocale    = "en_US.UTF-8"
 	syntheticLocaleDir = "lib/locale"
 )
@@ -24,7 +24,7 @@ const (
 // the user cache directory and binds TranslationDomain so GtkBuilder can
 // translate attributes marked translatable="yes" via dgettext.
 //
-// Layout: <UserCacheDir>/trayscale-locale/<lang>/LC_MESSAGES/trayscale.mo
+// Layout: <UserCacheDir>/anyscale-locale/<lang>/LC_MESSAGES/anyscale.mo
 //
 // When the process is stuck on a C/C.UTF-8 libc locale (typical after
 // [SanitizeEnvironment] on systems without generated language locales),

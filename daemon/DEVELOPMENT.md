@@ -1,4 +1,4 @@
-# Developing tailmix
+# Developing anyscale
 
 ## Prerequisites
 
@@ -110,7 +110,7 @@ diff:
 
 ```sh
 make licenses
-git diff -- licenses/tailmix.md
+git diff -- licenses/anyscale.md
 ```
 
 See [licenses/README.md](licenses/README.md) for the classifier exception and

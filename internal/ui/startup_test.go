@@ -16,9 +16,9 @@ import (
 
 // TestSecondaryInstance checks that a second launch activates the primary
 // without starting its own services. A private bus keeps the test away from
-// any Trayscale instance running in the user's session.
+// any Anyscale instance running in the user's session.
 func TestSecondaryInstance(t *testing.T) {
-	mode := os.Getenv("TRAYSCALE_STARTUP_TEST")
+	mode := os.Getenv("ANYSCALE_STARTUP_TEST")
 	if mode == "" {
 		if _, err := exec.LookPath("dbus-run-session"); err != nil {
 			t.Skip("dbus-run-session is unavailable")
@@ -26,7 +26,7 @@ func TestSecondaryInstance(t *testing.T) {
 		ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, "dbus-run-session", "--", os.Args[0], "-test.run=^TestSecondaryInstance$", "-test.v")
-		cmd.Env = append(os.Environ(), "TRAYSCALE_STARTUP_TEST=primary", "GSETTINGS_BACKEND=memory", "GTK_A11Y=none")
+		cmd.Env = append(os.Environ(), "ANYSCALE_STARTUP_TEST=primary", "GSETTINGS_BACKEND=memory", "GTK_A11Y=none")
 		// Desktop services may outlive the subprocess and keep a pipe open.
 		log, err := os.CreateTemp(t.TempDir(), "session-*.log")
 		if err != nil {
@@ -48,7 +48,7 @@ func TestSecondaryInstance(t *testing.T) {
 	requireGTK(t)
 	if mode == "secondary" {
 		// GApplication must receive application arguments, not Go test flags.
-		os.Args = []string{"trayscale"}
+		os.Args = []string{"anyscale"}
 		a := new(App)
 		a.Run(t.Context())
 		if a.poller != nil || a.settings != nil || a.tray != nil {
@@ -71,7 +71,7 @@ func TestSecondaryInstance(t *testing.T) {
 	defer primary.Release()
 
 	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestSecondaryInstance$", "-test.v")
-	cmd.Env = append(os.Environ(), "TRAYSCALE_STARTUP_TEST=secondary")
+	cmd.Env = append(os.Environ(), "ANYSCALE_STARTUP_TEST=secondary")
 	var output bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &output, &output
 	if err := cmd.Start(); err != nil {

@@ -69,7 +69,7 @@ func TestStartupPrefsPreserveNativeTailscaleSettings(t *testing.T) {
 	saved.Hostname = "old-hostname"
 	saved.WantRunning = false
 
-	server := &Server{hostname: "tailmix-work"}
+	server := &Server{hostname: "anyscale-work"}
 	got := server.startupPrefs(saved.View())
 
 	if got.ControlURL != saved.ControlURL {
@@ -84,8 +84,8 @@ func TestStartupPrefsPreserveNativeTailscaleSettings(t *testing.T) {
 	if len(got.AdvertiseTags) != 1 || got.AdvertiseTags[0] != "tag:native" {
 		t.Fatalf("AdvertiseTags = %q, want saved value", got.AdvertiseTags)
 	}
-	if got.Hostname != "tailmix-work" {
-		t.Fatalf("Hostname = %q, want Tailmix-owned hostname", got.Hostname)
+	if got.Hostname != "anyscale-work" {
+		t.Fatalf("Hostname = %q, want Anyscale-owned hostname", got.Hostname)
 	}
 	if !got.WantRunning {
 		t.Fatal("WantRunning = false, want true")
@@ -97,7 +97,7 @@ func TestStartupPrefsExplicitControlURLWins(t *testing.T) {
 	saved.ControlURL = "https://saved.example.com"
 
 	server := &Server{
-		hostname:   "tailmix-work",
+		hostname:   "anyscale-work",
 		ControlURL: "https://configured.example.com",
 	}
 	got := server.startupPrefs(saved.View())

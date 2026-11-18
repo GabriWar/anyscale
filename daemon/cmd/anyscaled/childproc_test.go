@@ -9,7 +9,7 @@ import (
 )
 
 func TestRunChildProcess(t *testing.T) {
-	const mode = "tailmix-test-child"
+	const mode = "anyscale-test-child"
 	wantErr := errors.New("child result")
 	var gotArgs []string
 	childproc.Add(mode, func(args []string) error {
@@ -38,7 +38,7 @@ func TestRunChildProcessIgnoresDaemonArguments(t *testing.T) {
 }
 
 func TestRunChildProcessRejectsInvalidMode(t *testing.T) {
-	for _, args := range [][]string{{"be-child"}, {"be-child", "unknown-tailmix-child"}} {
+	for _, args := range [][]string{{"be-child"}, {"be-child", "unknown-anyscale-child"}} {
 		handled, err := runChildProcess(args)
 		if !handled || err == nil {
 			t.Errorf("runChildProcess(%q) = handled %v, err %v; want handled error", args, handled, err)

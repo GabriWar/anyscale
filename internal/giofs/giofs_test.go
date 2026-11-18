@@ -25,7 +25,7 @@ func newFile(t *testing.T, path string) *gio.FileBase {
 
 func TestReaderFile(t *testing.T) {
 	dir := t.TempDir()
-	want := bytes.Repeat([]byte("trayscale"), 100000) // several reads
+	want := bytes.Repeat([]byte("anyscale"), 100000) // several reads
 	path := filepath.Join(dir, "data.bin")
 	if err := os.WriteFile(path, want, 0o644); err != nil {
 		t.Fatal(err)

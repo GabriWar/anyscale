@@ -5,7 +5,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/maisem/tailmix/controlapi"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
 )
 
 func TestItemsUseTailscaleLocationFiltering(t *testing.T) {

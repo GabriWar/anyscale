@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 type JSONStore struct {
@@ -33,11 +33,11 @@ func (s *JSONStore) Load() (State, error) {
 	}
 	var st State
 	if err := json.Unmarshal(b, &st); err != nil {
-		return State{}, fmt.Errorf("load tailmix state %s: %w", s.path, err)
+		return State{}, fmt.Errorf("load anyscale state %s: %w", s.path, err)
 	}
 	Normalize(&st)
 	if err := validateProfiles(&st); err != nil {
-		return State{}, fmt.Errorf("load tailmix state %s: %w", s.path, err)
+		return State{}, fmt.Errorf("load anyscale state %s: %w", s.path, err)
 	}
 	return st, nil
 }

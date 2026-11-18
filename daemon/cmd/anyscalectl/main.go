@@ -16,11 +16,11 @@ import (
 	"syscall"
 	"text/tabwriter"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/exitnodeview"
-	"github.com/maisem/tailmix/profilesocket"
-	tailmixversion "github.com/maisem/tailmix/version"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/exitnodeview"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"tailscale.com/cmd/tailscale/cli"
 	"tailscale.com/util/dnsname"
 )
@@ -28,7 +28,7 @@ import (
 type cliRunner func(context.Context, []string) error
 
 type managementClient interface {
-	Version(context.Context) (tailmixversion.Meta, error)
+	Version(context.Context) (anyscaleversion.Meta, error)
 	Status(context.Context) (controlapi.Status, error)
 	SetDaemonUp(context.Context, bool) (controlapi.DaemonState, error)
 	UpdateStatus(context.Context) (controlapi.UpdateStatus, error)
@@ -85,7 +85,7 @@ func runWithIO(ctx context.Context, args []string, stdin io.Reader, stdout, stde
 		newClient: func(socketDir string) managementClient {
 			return controlapi.NewClient(socketDir)
 		},
-		version: tailmixversion.String(),
+		version: anyscaleversion.String(),
 	})
 }
 
@@ -93,7 +93,7 @@ func runWithDependencies(ctx context.Context, args []string, deps dependencies) 
 	socketDir, args, err := globalOptions(args)
 	if err != nil {
 		fmt.Fprintln(deps.stderr, err)
-		fmt.Fprintln(deps.stderr, `Run "tailmix help" for usage.`)
+		fmt.Fprintln(deps.stderr, `Run "anyscalectl help" for usage.`)
 		return 2
 	}
 	if len(args) == 0 {
@@ -131,7 +131,7 @@ func runWithDependencies(ctx context.Context, args []string, deps dependencies) 
 		err = runVersion(ctx, client, args[1:], deps)
 	default:
 		if len(args) > 1 {
-			err = usageError{fmt.Sprintf("ambiguous legacy syntax; use %q", "tailmix ts --profile "+args[0]+" "+strings.Join(args[1:], " "))}
+			err = usageError{fmt.Sprintf("ambiguous legacy syntax; use %q", "anyscalectl ts --profile "+args[0]+" "+strings.Join(args[1:], " "))}
 		} else {
 			err = usageError{fmt.Sprintf("unknown command %q", args[0])}
 		}
@@ -142,7 +142,7 @@ func runWithDependencies(ctx context.Context, args []string, deps dependencies) 
 	var usage usageError
 	if errors.As(err, &usage) {
 		fmt.Fprintln(deps.stderr, usage.message)
-		fmt.Fprintln(deps.stderr, `Run "tailmix help" for usage.`)
+		fmt.Fprintln(deps.stderr, `Run "anyscalectl help" for usage.`)
 		return 2
 	}
 	fmt.Fprintln(deps.stderr, err)
@@ -212,7 +212,7 @@ func runWireGuard(ctx context.Context, client managementClient, args []string, d
 			return err
 		}
 		if len(rest) != 2 {
-			return usageError{"usage: tailmix wireguard shields-up <profile> <on|off> [--json]"}
+			return usageError{"usage: anyscalectl wireguard shields-up <profile> <on|off> [--json]"}
 		}
 		enabled := false
 		switch rest[1] {
@@ -326,16 +326,16 @@ func runVersion(ctx context.Context, client managementClient, args []string, dep
 	fmt.Fprintln(deps.stdout)
 	serverVersion, err := client.Version(ctx)
 	if err != nil {
-		fmt.Fprintln(deps.stdout, "tailmixd unavailable")
+		fmt.Fprintln(deps.stdout, "anyscaled unavailable")
 		return nil
 	}
-	fmt.Fprintln(deps.stdout, serverVersion.Format("tailmixd"))
+	fmt.Fprintln(deps.stdout, serverVersion.Format("anyscaled"))
 	return nil
 }
 
 func runDaemonAction(ctx context.Context, client managementClient, action string, args []string, deps dependencies) error {
 	if len(args) > 0 && isHelp(args[0]) {
-		fmt.Fprintf(deps.stdout, "Usage:\n  tailmix %s\n", action)
+		fmt.Fprintf(deps.stdout, "Usage:\n  anyscale %s\n", action)
 		return nil
 	}
 	if err := noOperands(args); err != nil {
@@ -345,7 +345,7 @@ func runDaemonAction(ctx context.Context, client managementClient, action string
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(deps.stdout, "tailmix is %s.\n", result.State)
+	fmt.Fprintf(deps.stdout, "anyscale is %s.\n", result.State)
 	return nil
 }
 
@@ -423,7 +423,7 @@ func runProfiles(ctx context.Context, client managementClient, args []string, de
 		return runProfileAdd(ctx, client, args[1:], deps)
 	case "rename":
 		if len(args) != 3 {
-			return usageError{"usage: tailmix profiles rename <profile> <new-profile>"}
+			return usageError{"usage: anyscalectl profiles rename <profile> <new-profile>"}
 		}
 		newName := args[2]
 		result, err := client.PatchProfile(ctx, args[1], controlapi.PatchProfileRequest{Name: &newName})
@@ -565,7 +565,7 @@ func runProfileAdd(ctx context.Context, client managementClient, args []string, 
 		return writeJSON(deps.stdout, result)
 	}
 	if result.RuntimeState == "needs-login" && result.AuthURL != "" {
-		fmt.Fprintf(deps.stdout, "Profile %q added; login required.\nRun: tailmix ts --profile %s up\n", result.Name, result.Name)
+		fmt.Fprintf(deps.stdout, "Profile %q added; login required.\nRun: anyscalectl ts --profile %s up\n", result.Name, result.Name)
 		return nil
 	}
 	fmt.Fprintf(deps.stdout, "Profile %q added (%s).\n", result.Name, result.RuntimeState)
@@ -700,7 +700,7 @@ func runRoutes(ctx context.Context, client managementClient, args []string, deps
 			return err
 		}
 		if !set || !acceptAllSet || len(rest) != 0 {
-			return usageError{"usage: tailmix routes set --profile <profile> --accept-all=<true|false> [--json]"}
+			return usageError{"usage: anyscalectl routes set --profile <profile> --accept-all=<true|false> [--json]"}
 		}
 		result, err := client.PatchIPRoutes(ctx, controlapi.PatchIPRoutesRequest{AcceptAll: map[string]bool{profileName: acceptAll}})
 		if err != nil {
@@ -891,7 +891,7 @@ func runDNSRoutes(ctx context.Context, client managementClient, args []string, d
 			return err
 		}
 		if !set || !acceptAllSet || len(rest) != 0 {
-			return usageError{"usage: tailmix dns routes set --profile <profile> --accept-all=<true|false> [--json]"}
+			return usageError{"usage: anyscalectl dns routes set --profile <profile> --accept-all=<true|false> [--json]"}
 		}
 		result, err := client.PatchDNSRoutes(ctx, controlapi.PatchDNSRoutesRequest{AcceptAll: map[string]bool{profileName: acceptAll}})
 		if err != nil {
@@ -972,7 +972,7 @@ func runTailscale(ctx context.Context, client managementClient, socketDir string
 	}
 	for _, arg := range rest {
 		if arg == "--socket" || arg == "-socket" || strings.HasPrefix(arg, "--socket=") || strings.HasPrefix(arg, "-socket=") {
-			return usageError{"the tailscale --socket flag is managed by tailmix"}
+			return usageError{"the tailscale --socket flag is managed by anyscale"}
 		}
 	}
 	if len(rest) == 1 {
@@ -993,7 +993,7 @@ func runTailscale(ctx context.Context, client managementClient, socketDir string
 		return err
 	}
 	if selected.RuntimeState == "down" {
-		return errors.New("tailmix is down; run \"tailmix up\" first")
+		return errors.New("anyscale is down; run \"anyscale up\" first")
 	}
 	socketPath, err := profileLocalAPISocket(socketDir, selected)
 	if err != nil {
@@ -1008,11 +1008,11 @@ func runTailscale(ctx context.Context, client managementClient, socketDir string
 	return deps.runCLI(ctx, cliArgs)
 }
 
-// defaultProfileName names the profile that "tailmix ts login" and
-// "tailmix ts up" create when no Tailscale profile exists yet.
+// defaultProfileName names the profile that "anyscalectl ts login" and
+// "anyscalectl ts up" create when no Tailscale profile exists yet.
 const defaultProfileName = "default"
 
-// implicitTailscaleProfile selects the profile for a "tailmix ts" command run
+// implicitTailscaleProfile selects the profile for a "anyscalectl ts" command run
 // without --profile. With exactly one Tailscale profile it is used. With none,
 // "up" and "login" create one so first-time setup is a single command; other
 // subcommands fail rather than create state as a side effect.
@@ -1035,7 +1035,7 @@ func implicitTailscaleProfile(ctx context.Context, client managementClient, subc
 		return only, nil
 	case 0:
 		if subcommand != "up" && subcommand != "login" {
-			return controlapi.Profile{}, usageError{`no Tailscale profiles yet; run "sudo tailmix ts login" to create one`}
+			return controlapi.Profile{}, usageError{`no Tailscale profiles yet; run "sudo anyscalectl ts login" to create one`}
 		}
 		created, err := client.AddProfile(ctx, controlapi.AddProfileRequest{Name: defaultProfileName})
 		if err != nil {
@@ -1606,10 +1606,10 @@ func isHelp(arg string) bool {
 	return arg == "help" || arg == "-h" || arg == "--help"
 }
 
-const rootHelp = `tailmix manages multiple Tailscale profiles on one host.
+const rootHelp = `anyscale manages multiple Tailscale profiles on one host.
 
 Usage:
-  tailmix [--socket-dir <directory>] <command> [arguments]
+  anyscalectl [--socket-dir <directory>] <command> [arguments]
 
 Commands:
   status       Show active profiles and accepted network policy
@@ -1625,19 +1625,19 @@ Commands:
   tailscale    Run an upstream Tailscale command for one profile
   ts           Shortcut for tailscale
   completion   Generate shell completion scripts
-  version      Show the tailmix build version
+  version      Show the anyscale build version
   help         Show this help
 
-Use "tailmix <command> help" for command-specific help.
+Use "anyscalectl <command> help" for command-specific help.
 
 Environment:
-  TAILMIX_SOCKET_DIR   Default directory for daemon and profile sockets
+  ANYSCALE_SOCKET_DIR   Default directory for daemon and profile sockets
 `
 
 const wireGuardHelp = `Usage:
-  tailmix wireguard apply --file <path|-> [--json]
-  tailmix wireguard show <profile> [--json]
-  tailmix wireguard shields-up <profile> <on|off> [--json]
+  anyscalectl wireguard apply --file <path|-> [--json]
+  anyscalectl wireguard show <profile> [--json]
+  anyscalectl wireguard shields-up <profile> <on|off> [--json]
 
 Apply validates a declarative YAML profile and reconciles it live. Relative key
 paths are resolved from the manifest directory, or from the current directory
@@ -1647,43 +1647,43 @@ while preserving replies to locally initiated traffic.
 `
 
 const versionHelp = `Usage:
-  tailmix version
+  anyscalectl version
 
 Shows client and server versions, source revisions, and full embedded Tailscale
-module versions. The server is shown as unavailable when tailmixd cannot be
+module versions. The server is shown as unavailable when anyscaled cannot be
 reached.
 `
 
 const updateHelp = `Usage:
-  tailmix update status [--json]
-  tailmix update enable [--json]
-  tailmix update disable [--json]
-  tailmix update check [--json]
-  tailmix update apply [--json]
+  anyscalectl update status [--json]
+  anyscalectl update enable [--json]
+  anyscalectl update disable [--json]
+  anyscalectl update check [--json]
+  anyscalectl update apply [--json]
 
 Automatic updates are enabled by default. Check queries the stable release
 channel immediately; apply installs an available update immediately.
 `
 
 const statusHelp = `Usage:
-  tailmix status [--json]
+  anyscalectl status [--json]
 
-Shows whether tailmix is up or down, active profiles and the accepted IP routes,
+Shows whether anyscale is up or down, active profiles and the accepted IP routes,
 selected exit node, effective DNS routes, and configured DNS search domains.
 Advertised-but-unaccepted choices remain available through the corresponding
 list commands.
 `
 
 const profilesHelp = `Usage:
-  tailmix profiles list [--all] [--json]
-  tailmix profiles show <profile> [--json]
-  tailmix profiles add <profile> [options]
-  tailmix profiles rename <profile> <new-profile>
-  tailmix profiles set <profile> --hostname <hostname> [--json]
-  tailmix profiles enable <profile> [--json]
-  tailmix profiles disable <profile> [--json]
-  tailmix profiles restart <profile> [--json]
-  tailmix profiles remove <profile> [--purge --yes] [--json]
+  anyscalectl profiles list [--all] [--json]
+  anyscalectl profiles show <profile> [--json]
+  anyscalectl profiles add <profile> [options]
+  anyscalectl profiles rename <profile> <new-profile>
+  anyscalectl profiles set <profile> --hostname <hostname> [--json]
+  anyscalectl profiles enable <profile> [--json]
+  anyscalectl profiles disable <profile> [--json]
+  anyscalectl profiles restart <profile> [--json]
+  anyscalectl profiles remove <profile> [--purge --yes] [--json]
 
 Add options:
   --hostname <hostname>
@@ -1695,10 +1695,10 @@ Add options:
 `
 
 const routesHelp = `Usage:
-  tailmix routes list [--available] [--json]
-  tailmix routes bind --profile <profile> <prefix>... [--replace] [--json]
-  tailmix routes unbind <prefix>... [--profile <expected-profile>] [--json]
-  tailmix routes set --profile <profile> --accept-all=<true|false> [--json]
+  anyscalectl routes list [--available] [--json]
+  anyscalectl routes bind --profile <profile> <prefix>... [--replace] [--json]
+  anyscalectl routes unbind <prefix>... [--profile <expected-profile>] [--json]
+  anyscalectl routes set --profile <profile> --accept-all=<true|false> [--json]
 
 Profile option: -p, --profile <profile>
 
@@ -1710,9 +1710,9 @@ Default routes use exit-node policy.
 `
 
 const exitNodeHelp = `Usage:
-  tailmix exit-node list [--filter <country>] [--json]
-  tailmix exit-node set --profile <profile> <peer> [--json]
-  tailmix exit-node clear [--json]
+  anyscalectl exit-node list [--filter <country>] [--json]
+  anyscalectl exit-node set --profile <profile> <peer> [--json]
+  anyscalectl exit-node clear [--json]
 
 Profile option: -p, --profile <profile>
 
@@ -1727,15 +1727,15 @@ every exit node in that country.
 `
 
 const dnsHelp = `Usage:
-  tailmix dns routes <command> [arguments]
-  tailmix dns search <command> [arguments]
+  anyscalectl dns routes <command> [arguments]
+  anyscalectl dns search <command> [arguments]
 `
 
 const dnsRoutesHelp = `Usage:
-  tailmix dns routes list [--available] [--json]
-  tailmix dns routes bind --profile <profile> <domain>... [--replace] [--json]
-  tailmix dns routes unbind <domain>... [--profile <expected-profile>] [--json]
-  tailmix dns routes set --profile <profile> --accept-all=<true|false> [--json]
+  anyscalectl dns routes list [--available] [--json]
+  anyscalectl dns routes bind --profile <profile> <domain>... [--replace] [--json]
+  anyscalectl dns routes unbind <domain>... [--profile <expected-profile>] [--json]
+  anyscalectl dns routes set --profile <profile> --accept-all=<true|false> [--json]
 
 Profile option: -p, --profile <profile>
 
@@ -1748,25 +1748,25 @@ The root suffix "." selects a profile's default DNS resolver route.
 `
 
 const dnsSearchHelp = `Usage:
-  tailmix dns search list [--json]
-  tailmix dns search set <domain>... [--json]
-  tailmix dns search add <domain>... [--json]
-  tailmix dns search remove <domain>... [--json]
-  tailmix dns search clear [--json]
+  anyscalectl dns search list [--json]
+  anyscalectl dns search set <domain>... [--json]
+  anyscalectl dns search add <domain>... [--json]
+  anyscalectl dns search remove <domain>... [--json]
+  anyscalectl dns search clear [--json]
 
 The list includes configured search domains and every search domain detected
 from each tailnet.
 `
 
 const tailscaleHelp = `Usage:
-  tailmix tailscale [--profile <profile>] <tailscale-subcommand> [arguments]
-  tailmix ts [--profile <profile>] <tailscale-subcommand> [arguments]
+  anyscalectl tailscale [--profile <profile>] <tailscale-subcommand> [arguments]
+  anyscalectl ts [--profile <profile>] <tailscale-subcommand> [arguments]
 
 Profile option: -p, --profile <profile>
 
 --profile may be omitted when exactly one Tailscale profile exists. If none
-exist, "tailmix ts login" (or "tailmix ts up") creates a profile named "default".
+exist, "anyscalectl ts login" (or "anyscalectl ts up") creates a profile named "default".
 
 All remaining arguments are passed unchanged to Tailscale's upstream CLI.
-The --socket option is owned by tailmix and cannot be overridden.
+The --socket option is owned by anyscale and cannot be overridden.
 `

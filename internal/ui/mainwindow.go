@@ -34,7 +34,7 @@ var (
 // The main window's template carries menu.ui's menus, which its menu
 // buttons refer to by id.
 var mainWindowClass = gobj.Widget[MainWindow](gobj.WidgetSpec{
-	Name:     "TrayscaleMainWindow",
+	Name:     "AnyscaleMainWindow",
 	Parent:   adw.ApplicationWindowGLibType,
 	Template: strings.Replace(mainWindowXML, "</interface>", menuXML[strings.Index(menuXML, "<menu "):strings.LastIndex(menuXML, "</interface>")]+"</interface>", 1),
 })

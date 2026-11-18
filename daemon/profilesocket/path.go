@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
-const EnvDir = "TAILMIX_SOCKET_DIR"
+const EnvDir = "ANYSCALE_SOCKET_DIR"
 
 func DefaultDir() string {
 	if dir := strings.TrimSpace(os.Getenv(EnvDir)); dir != "" {
 		return dir
 	}
-	return "/var/run/tailmix"
+	return "/var/run/anyscale"
 }
 
 func Path(dir, profileID string) (string, error) {

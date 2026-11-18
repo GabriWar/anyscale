@@ -235,11 +235,11 @@ func TestManagerCompilesGlobalResolverWithoutDroppingMagicDNS(t *testing.T) {
 	if len(capture.config.SearchDomains) != 0 {
 		t.Fatalf("global OS config unexpectedly contains search domains: %v", capture.config.SearchDomains)
 	}
-	searchConfig, err := os.ReadFile(filepath.Join(configurator.resolverDir, tailmixSearchResolverFile))
+	searchConfig, err := os.ReadFile(filepath.Join(configurator.resolverDir, anyscaleSearchResolverFile))
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantSearchConfig := tailmixResolverFileHeader + "search home.example\n"
+	wantSearchConfig := anyscaleResolverFileHeader + "search home.example\n"
 	if string(searchConfig) != wantSearchConfig {
 		t.Fatalf("search resolver config = %q, want %q", searchConfig, wantSearchConfig)
 	}
@@ -295,7 +295,7 @@ func TestManagerCompilesGlobalResolverWithoutDroppingMagicDNS(t *testing.T) {
 	if len(capture.config.SearchDomains) != 1 || capture.config.SearchDomains[0] != wantSearchDomain {
 		t.Fatalf("split DNS search domains = %v, want [%v]", capture.config.SearchDomains, wantSearchDomain)
 	}
-	if _, err := os.Stat(filepath.Join(configurator.resolverDir, tailmixSearchResolverFile)); !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("tailmix global search resolver remains after returning to split DNS: %v", err)
+	if _, err := os.Stat(filepath.Join(configurator.resolverDir, anyscaleSearchResolverFile)); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("anyscale global search resolver remains after returning to split DNS: %v", err)
 	}
 }

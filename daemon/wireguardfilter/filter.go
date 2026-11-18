@@ -9,7 +9,7 @@ import (
 	"slices"
 	"sync/atomic"
 
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"github.com/tailscale/wireguard-go/tun"
 	"go4.org/netipx"
 	"tailscale.com/net/packet"

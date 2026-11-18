@@ -1,6 +1,6 @@
 # Raw WireGuard profiles
 
-tailmix can run a userspace WireGuard interface as a profile alongside its
+anyscale can run a userspace WireGuard interface as a profile alongside its
 Tailscale profiles. Raw WireGuard profiles are available in TUN mode. They do
 not provide Tailscale coordination, DERP, or control-plane ACL distribution,
 but they can enforce a local per-profile packet filter at the userspace TUN
@@ -40,19 +40,19 @@ peers:
 Replace the example public key and generate optional preshared keys with your
 usual WireGuard tools. `name` is both the stable peer identity in the profile
 and its DNS label, so this peer is published as `gateway.lab.example`. Peer
-addresses receive tailmix effective addresses when necessary, just like
+addresses receive anyscale effective addresses when necessary, just like
 addresses from Tailscale profiles.
 
 Apply and inspect the profile with:
 
 ```sh
-sudo tailmix wireguard apply --file ./lab.yaml
-tailmix wireguard show lab
-tailmix wireguard show lab --json
+sudo anyscalectl wireguard apply --file ./lab.yaml
+anyscalectl wireguard show lab
+anyscalectl wireguard show lab --json
 ```
 
 Relative key paths are resolved from the YAML file's directory. If
-`privateKeyFile` is omitted, tailmix generates and persists a managed private
+`privateKeyFile` is omitted, anyscale generates and persists a managed private
 key. Reapplying the file reconciles peers, keys, endpoints, keepalives,
 addresses, routes, and packet policy on the running WireGuard device without
 recreating its TUN. Removing `presharedKeyFile` from a peer clears that peer's
@@ -62,7 +62,7 @@ Apply validates and resolves the complete request, compiles its packet policy,
 and saves the new desired configuration and secrets before live mutation. The
 runtime then installs an outbound-only transition and applies changes forward.
 If WireGuard UAPI or aggregate host reconciliation fails after mutation starts,
-tailmix returns that failure and leaves the profile fail-closed; it does not
+anyscale returns that failure and leaves the profile fail-closed; it does not
 issue inverse UAPI or reconstruct the previous mapper, routes, or filter. Status
 reports that runtime may differ from saved desired state. Reapply the manifest
 or restart the daemon to retry device convergence; normal reconciliation
@@ -87,7 +87,7 @@ packetFilter:
 That empty policy is outbound-only: it rejects new inbound connections. This is
 an intentional security tightening for raw profiles created before packet
 filters existed. Review and add explicit grants before upgrading a host that
-must continue accepting inbound traffic. Older tailmix binaries reject a
+must continue accepting inbound traffic. Older anyscale binaries reject a
 manifest containing `packetFilter`; they do not silently ignore it.
 
 Every grant requires non-empty `src`, `dst`, and `ip` arrays. Unknown fields,
@@ -123,7 +123,7 @@ peers is invalid. Literal `/0` source selectors are invalid; use `*`.
 
 Only `self` delivery is currently available. Other valid destination selectors
 remain in normalized desired state but compile no allow match until forwarding
-exists. `tailmix wireguard show` reports each destination selector as `active`,
+exists. `anyscalectl wireguard show` reports each destination selector as `active`,
 `partial`, or `inactive`; unavailable transit uses the stable reason
 `forwarding_unavailable`. `*` and a CIDR that includes both self and non-self
 space are therefore partial today. Literal destination `/0` selectors are
@@ -162,8 +162,8 @@ Shields-up persistently suppresses all configured grants without changing the
 YAML:
 
 ```sh
-sudo tailmix wireguard shields-up lab on
-sudo tailmix wireguard shields-up lab off
+sudo anyscalectl wireguard shields-up lab on
+sudo anyscalectl wireguard shields-up lab off
 ```
 
 It remains mutable while the profile is disabled, stopped, failed, or while the
@@ -173,26 +173,26 @@ still permits outbound traffic and replies to locally initiated traffic.
 
 The daemon publishes an enabling restrictive filter before persisting the
 setting. It persists a disable before publishing the restored grant filter, so
-a failed state write remains fail-closed. `tailmix status` and
-`tailmix wireguard show` report the current override.
+a failed state write remains fail-closed. `anyscalectl status` and
+`anyscalectl wireguard show` report the current override.
 
 ## Routes and exit nodes
 
 `routes` only declares what a peer can route. Select those routes through the
-normal tailmix policy commands:
+normal anyscale policy commands:
 
 ```sh
-sudo tailmix routes bind --profile lab 10.90.0.0/16
-sudo tailmix routes set --profile lab --accept-all=true
+sudo anyscalectl routes bind --profile lab 10.90.0.0/16
+sudo anyscalectl routes set --profile lab --accept-all=true
 ```
 
 Likewise, `exitNode: true` declares eligibility but does not select the peer:
 
 ```sh
-sudo tailmix exit-node set --profile lab gateway
-sudo tailmix exit-node clear
+sudo anyscalectl exit-node set --profile lab gateway
+sudo anyscalectl exit-node clear
 ```
 
-Default routes are not accepted in `routes`; use `exitNode` and the tailmix
+Default routes are not accepted in `routes`; use `exitNode` and the anyscale
 exit-node policy instead. Raw profile endpoint traffic bypasses a selected
 full-tunnel route so the WireGuard transport does not recursively enter itself.

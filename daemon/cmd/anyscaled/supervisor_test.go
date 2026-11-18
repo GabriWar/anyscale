@@ -12,20 +12,20 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maisem/tailmix/controlapi"
-	tailmixdns "github.com/maisem/tailmix/dns"
-	"github.com/maisem/tailmix/hosttun"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/profilesocket"
-	"github.com/maisem/tailmix/socksproxy"
-	"github.com/maisem/tailmix/state"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	anyscaledns "github.com/gabriwar/anyscale/daemon/dns"
+	"github.com/gabriwar/anyscale/daemon/hosttun"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/socksproxy"
+	"github.com/gabriwar/anyscale/daemon/state"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"github.com/tailscale/wireguard-go/tun"
 	"golang.org/x/net/dns/dnsmessage"
 )
 
 type lifecycleEngine struct {
-	status     tailmixprofile.Status
+	status     anyscaleprofile.Status
 	closeErr   error
 	closeCalls int
 }
@@ -38,7 +38,7 @@ func (e *lifecycleEngine) Close() error {
 func (e *lifecycleEngine) Dial(context.Context, string, string) (net.Conn, error) {
 	return nil, net.ErrClosed
 }
-func (e *lifecycleEngine) Status(context.Context) (tailmixprofile.Status, error) {
+func (e *lifecycleEngine) Status(context.Context) (anyscaleprofile.Status, error) {
 	return e.status, nil
 }
 func (e *lifecycleEngine) WatchUpdates(context.Context, func()) error { return nil }
@@ -143,8 +143,8 @@ func TestSupervisorRunHonorsPersistedDownState(t *testing.T) {
 
 func TestDaemonDownStopsRuntimesAndPersists(t *testing.T) {
 	s := newLifecycleTestSupervisor(t, lifecycleTestState())
-	work := &lifecycleEngine{status: tailmixprofile.Status{ProfileID: "p_work", BackendState: "Running"}}
-	home := &lifecycleEngine{status: tailmixprofile.Status{ProfileID: "p_home", BackendState: "Running"}}
+	work := &lifecycleEngine{status: anyscaleprofile.Status{ProfileID: "p_work", BackendState: "Running"}}
+	home := &lifecycleEngine{status: anyscaleprofile.Status{ProfileID: "p_home", BackendState: "Running"}}
 	s.runtimes["p_work"] = &managedProfile{runtime: runtimeProfile{Engine: work}, cancel: func() {}}
 	s.runtimes["p_home"] = &managedProfile{runtime: runtimeProfile{Engine: home}, cancel: func() {}}
 
@@ -199,8 +199,8 @@ func TestDaemonUpRestoresEnabledSet(t *testing.T) {
 	st := lifecycleTestState()
 	st.Down = true
 	s := newLifecycleTestSupervisor(t, st)
-	work := &lifecycleEngine{status: tailmixprofile.Status{ProfileID: "p_work", BackendState: "Running"}}
-	home := &lifecycleEngine{status: tailmixprofile.Status{ProfileID: "p_home", BackendState: "Running"}}
+	work := &lifecycleEngine{status: anyscaleprofile.Status{ProfileID: "p_work", BackendState: "Running"}}
+	home := &lifecycleEngine{status: anyscaleprofile.Status{ProfileID: "p_home", BackendState: "Running"}}
 	s.runtimes["p_work"] = &managedProfile{runtime: runtimeProfile{Engine: work}, cancel: func() {}}
 	s.runtimes["p_home"] = &managedProfile{runtime: runtimeProfile{Engine: home}, cancel: func() {}}
 
@@ -237,7 +237,7 @@ func TestDaemonUpRestoresEnabledSet(t *testing.T) {
 func TestDaemonDownPersistsAfterRuntimeStopFailure(t *testing.T) {
 	s := newLifecycleTestSupervisor(t, lifecycleTestState())
 	engine := &lifecycleEngine{
-		status:   tailmixprofile.Status{ProfileID: "p_work", BackendState: "Running"},
+		status:   anyscaleprofile.Status{ProfileID: "p_work", BackendState: "Running"},
 		closeErr: errors.New("close failed"),
 	}
 	s.runtimes["p_work"] = &managedProfile{runtime: runtimeProfile{Engine: engine}, cancel: func() {}}
@@ -285,7 +285,7 @@ func TestDaemonDownRejectsProfileMutations(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			err := test.run()
 			var apiErr *controlapi.Error
-			if !errors.As(err, &apiErr) || apiErr.Code != "daemon_down" || apiErr.Message != "tailmix is down; run \"tailmix up\" first" {
+			if !errors.As(err, &apiErr) || apiErr.Code != "daemon_down" || apiErr.Message != "anyscale is down; run \"anyscale up\" first" {
 				t.Fatalf("error = %#v", err)
 			}
 		})
@@ -318,11 +318,11 @@ func TestSupervisorCloseReportsHostCleanupError(t *testing.T) {
 }
 
 type lifecycleDNSService struct {
-	tailmixdns.Service
+	anyscaledns.Service
 	err error
 }
 
-func (s *lifecycleDNSService) ConfigureFull(tailmixdns.LiveConfig) error { return s.err }
+func (s *lifecycleDNSService) ConfigureFull(anyscaledns.LiveConfig) error { return s.err }
 
 type lifecycleDNSEngine struct {
 	lifecycleEngine
@@ -357,7 +357,7 @@ func TestSupervisorDNSReplacementDrainsAcrossMultipleUpdates(t *testing.T) {
 	}}
 	s.runtimes["p_work"] = &managedProfile{runtime: runtimeProfile{Engine: engine}}
 	configure := func() error {
-		return s.configureDNSLocked(tailmixdns.LiveConfig{Routes: []tailmixdns.Route{{Suffix: ".", ProfileID: "p_work", ProfileDNS: true}}})
+		return s.configureDNSLocked(anyscaledns.LiveConfig{Routes: []anyscaledns.Route{{Suffix: ".", ProfileID: "p_work", ProfileDNS: true}}})
 	}
 	if err := configure(); err != nil {
 		t.Fatal(err)

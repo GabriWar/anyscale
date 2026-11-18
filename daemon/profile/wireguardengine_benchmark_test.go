@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/gaissmai/bart"
-	"github.com/maisem/tailmix/packetmap"
-	"github.com/maisem/tailmix/tunmux"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/packetmap"
+	"github.com/gabriwar/anyscale/daemon/tunmux"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"github.com/tailscale/wireguard-go/conn"
 	"tailscale.com/net/packet"
 )
@@ -66,8 +66,8 @@ func BenchmarkWireGuardEngine(b *testing.B) {
 	benchmarkWireGuardPath(b, newWireGuardEngineBenchmarkFixture)
 }
 
-func BenchmarkWireGuardTailmixPath(b *testing.B) {
-	benchmarkWireGuardPath(b, newWireGuardTailmixBenchmarkFixture)
+func BenchmarkWireGuardAnyscalePath(b *testing.B) {
+	benchmarkWireGuardPath(b, newWireGuardAnyscaleBenchmarkFixture)
 }
 
 type wireGuardBenchmarkFixture struct {
@@ -208,7 +208,7 @@ func newWireGuardEngineBenchmarkFixture(tb testing.TB) *wireGuardBenchmarkFixtur
 	return fixture
 }
 
-func newWireGuardTailmixBenchmarkFixture(tb testing.TB) *wireGuardBenchmarkFixture {
+func newWireGuardAnyscaleBenchmarkFixture(tb testing.TB) *wireGuardBenchmarkFixture {
 	tb.Helper()
 	fabric := newWGTestFabric()
 	nodes := newWireGuardBenchmarkNodes(tb, fabric)

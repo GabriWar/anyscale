@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/maisem/tailmix/controlapi"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
 )
 
 // Node combines an available exit node with its optional selected state.
@@ -23,7 +23,7 @@ type Node struct {
 	Reason      string
 }
 
-// Key identifies a peer within one tailmix profile.
+// Key identifies a peer within one anyscale profile.
 func (node Node) Key() string {
 	return node.ProfileID + "\x00" + node.NodeID
 }

@@ -47,14 +47,14 @@ func newUUID() (string, error) {
 }
 
 func newRig(ctx context.Context, opts options, out io.Writer) *rig {
-	root := os.Getenv("TAILMIX_E2E_ROOT")
+	root := os.Getenv("ANYSCALE_E2E_ROOT")
 	if root == "" {
 		root = must(os.Getwd())
 	}
 	r := &rig{
 		runner: runner{ctx},
 		root:   must(findRoot(root)),
-		prefix: "tailmix-e2e-" + must(newUUID()),
+		prefix: "anyscale-e2e-" + must(newUUID()),
 		names:  map[string]string{},
 		stage:  "initialization",
 		out:    out,
@@ -63,7 +63,7 @@ func newRig(ctx context.Context, opts options, out io.Writer) *rig {
 	for _, role := range roles {
 		r.names[role] = r.prefix + "-" + role
 	}
-	r.labels = must(lifecycleLabels(os.Getenv("TAILMIX_E2E_RUN_ID"), false))
+	r.labels = must(lifecycleLabels(os.Getenv("ANYSCALE_E2E_RUN_ID"), false))
 	if _, err := os.Stat("/.dockerenv"); err == nil {
 		r.containerCaller = true
 		hostname, err := os.ReadFile("/etc/hostname")
@@ -84,7 +84,7 @@ func newRig(ctx context.Context, opts options, out io.Writer) *rig {
 		_ = r.bind(opts.binaryDir)
 	}
 	// No allocation until all caller-supplied bind paths have been validated.
-	r.tmp = must(os.MkdirTemp(parent, "tailmix-e2e-"))
+	r.tmp = must(os.MkdirTemp(parent, "anyscale-e2e-"))
 	if err := os.Chmod(r.tmp, 0o700); err != nil {
 		_ = os.RemoveAll(r.tmp)
 		panic(failure("private directory permissions"))
@@ -118,7 +118,7 @@ func (r *rig) e(role string, args ...string) result {
 }
 
 func (r *rig) cli(check bool, timeout time.Duration, args ...string) result {
-	return r.ex(check, timeout, "client", append([]string{"/bin/tailmix", "--socket-dir=/private/sockets"}, args...)...)
+	return r.ex(check, timeout, "client", append([]string{"/bin/anyscalectl", "--socket-dir=/private/sockets"}, args...)...)
 }
 
 func (r *rig) c(args ...string) result { return r.cli(true, 15*time.Second, args...) }
@@ -187,7 +187,7 @@ func (r *rig) setup() {
 	if err := copyCleanupHelper(filepath.Join(r.tmp, "cleanup-helper")); err != nil {
 		panic(err)
 	}
-	if err := privateWrite(filepath.Join(r.tmp, ".tailmix-e2e-owner"), strings.TrimPrefix(r.prefix, "tailmix-e2e-")); err != nil {
+	if err := privateWrite(filepath.Join(r.tmp, ".anyscale-e2e-owner"), strings.TrimPrefix(r.prefix, "anyscale-e2e-")); err != nil {
 		panic(err)
 	}
 	if r.binaryDir == filepath.Join(r.tmp, "bin") {
@@ -196,14 +196,14 @@ func (r *rig) setup() {
 		if goTool == "" {
 			goTool = "go"
 		}
-		for _, name := range []string{"tailmix", "tailmixd"} {
+		for _, name := range []string{"anyscalectl", "anyscaled"} {
 			_ = must(r.run(command{
 				argv: []string{goTool, "build", "-p", "1", "-o", filepath.Join(r.binaryDir, name), "./cmd/" + name},
 				dir:  r.root, env: buildEnv(), timeout: 720 * time.Second,
 			}))
 		}
 	}
-	for _, name := range []string{"tailmix", "tailmixd"} {
+	for _, name := range []string{"anyscalectl", "anyscaled"} {
 		info, err := os.Stat(filepath.Join(r.binaryDir, name))
 		require(err == nil && info.Mode().IsRegular(), "missing binary")
 	}
@@ -370,9 +370,9 @@ func (r *rig) setupClient() {
 		"--env-file", filepath.Join(r.tmp, "client", "env"),
 		"--mount", "type=bind,src=" + r.bind(r.binaryDir) + ",dst=/checkout,readonly",
 	}, nil)
-	r.e("client", "ln", "-s", "/checkout/tailmix", "/bin/tailmix")
+	r.e("client", "ln", "-s", "/checkout/anyscale", "/bin/anyscalectl")
 	r.d("exec", "-d", r.names["client"], "sh", "-c",
-		"echo $$ > /private/app.pid; exec /checkout/tailmixd --mode=tun "+
+		"echo $$ > /private/app.pid; exec /checkout/anyscaled --mode=tun "+
 			"--auto-update=false --state=/private/state.json --socket-dir=/private/sockets "+
 			"--profile=id=work,dir=/private/work,hostname=client,auth-key-env=TEST_AUTHKEY "+
 			"> /private/daemon.log 2>&1")

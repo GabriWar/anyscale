@@ -93,8 +93,8 @@ func (win *MainWindow) UpdateTailnets(st mix.Status, daemonErr error, selected s
 	defer func() { l.updating = false }()
 
 	if daemonErr != nil {
-		win.TailnetPlaceholder.SetTitle(locale.Get("tailmix Not Running"))
-		win.TailnetPlaceholder.SetDescription(locale.Get("Anyscale needs the tailmix daemon. Start it with <tt>sudo systemctl start tailmixd</tt>."))
+		win.TailnetPlaceholder.SetTitle(locale.Get("Daemon Not Running"))
+		win.TailnetPlaceholder.SetDescription(locale.Get("Anyscale needs its daemon, anyscaled. Start it with <tt>sudo systemctl start anyscaled</tt>."))
 	} else {
 		win.TailnetPlaceholder.SetTitle(locale.Get("No Tailnets"))
 		win.TailnetPlaceholder.SetDescription(locale.Get("Add a Tailscale or Headscale tailnet to get started."))
@@ -207,7 +207,7 @@ func tailnetState(t mix.Tailnet, exitNode bool) string {
 	case t.RuntimeState == "disabled":
 		s = locale.Get("Disabled")
 	case t.RuntimeState == "down":
-		s = locale.Get("tailmix stopped")
+		s = locale.Get("Daemon stopped")
 	case t.RuntimeState == "needs-login":
 		s = locale.Get("Needs login")
 	case t.RuntimeState == "error":

@@ -225,7 +225,7 @@ func (a *App) showAbout() {
 	dialog.SetLicenseType(gtk.LicenseCustomValue)
 	dialog.SetApplicationIcon(metadata.AppID)
 	dialog.SetApplicationName("Anyscale")
-	dialog.SetComments(locale.Get("Anyscale is a fork of Trayscale that uses tailmix to connect to several tailnets at once."))
+	dialog.SetComments(locale.Get("Connect to several Tailscale and Headscale tailnets at once."))
 	dialog.AddCreditSection(locale.Get("Based on"), []string{
 		"Trayscale by DeedleFake https://github.com/DeedleFake/trayscale",
 		"tailmix by Maisem Ali https://github.com/maisem/tailmix",

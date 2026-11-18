@@ -104,7 +104,7 @@ func TestLifecycleAndCleanupOwnership(t *testing.T) {
 	if labels, err := lifecycleLabels("", false); err != nil || len(labels) != 0 {
 		t.Fatal("optional label failed")
 	}
-	prefix := "tailmix-e2e-" + strings.Repeat("a", 32) + "-"
+	prefix := "anyscale-e2e-" + strings.Repeat("a", 32) + "-"
 	removed := []string{}
 	docker := func(_ bool, _ time.Duration, args ...string) result {
 		joined := strings.Join(args, " ")
@@ -204,14 +204,14 @@ func TestCLI(t *testing.T) {
 	if runMain([]string{"--help"}, &stdout, &stderr) != 0 || !strings.Contains(stdout.String(), "Usage:") {
 		t.Fatal("missing help")
 	}
-	t.Setenv("TAILMIX_E2E_RUN_ID", "")
+	t.Setenv("ANYSCALE_E2E_RUN_ID", "")
 	if runMain([]string{"--cleanup"}, &stdout, &stderr) == 0 {
 		t.Fatal("cleanup accepted missing identity")
 	}
 }
 
 func TestProcessFixture(t *testing.T) {
-	if os.Getenv("TAILMIX_NETWORK_FIXTURE") != "sleep" {
+	if os.Getenv("ANYSCALE_NETWORK_FIXTURE") != "sleep" {
 		return
 	}
 	fmt.Fprint(os.Stdout, "private fixture output")
@@ -223,7 +223,7 @@ func TestProcessFixture(t *testing.T) {
 
 func fixtureCommand(t *testing.T) command {
 	t.Helper()
-	t.Setenv("TAILMIX_NETWORK_FIXTURE", "sleep")
+	t.Setenv("ANYSCALE_NETWORK_FIXTURE", "sleep")
 	return command{argv: []string{os.Args[0], "-test.run=^TestProcessFixture$"}, timeout: time.Hour}
 }
 

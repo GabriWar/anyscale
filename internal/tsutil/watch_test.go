@@ -121,7 +121,7 @@ var fakeSocket string
 func TestMain(m *testing.M) {
 	// Set before any test starts a poller, as pollers from earlier
 	// tests may still be dialing.
-	dir, err := os.MkdirTemp("", "trayscale-test")
+	dir, err := os.MkdirTemp("", "anyscale-test")
 	if err != nil {
 		panic(err)
 	}

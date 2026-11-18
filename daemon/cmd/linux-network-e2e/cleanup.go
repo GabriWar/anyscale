@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const runLabel = "io.github.maisem.tailmix.e2e-run"
+const runLabel = "io.github.maisem.anyscale.e2e-run"
 
 var safeRunID = regexp.MustCompile(`^[A-Za-z0-9_.-]{1,128}$`)
 var privateID = regexp.MustCompile(`^[0-9a-f]{32}$`)
@@ -33,7 +33,7 @@ type dockerFunc func(bool, time.Duration, ...string) result
 func cleanupRun(runID string, docker dockerFunc) {
 	_ = must(lifecycleLabels(runID, true))
 	selected := "label=" + runLabel + "=" + runID
-	prefix := `tailmix-e2e-[0-9a-f]{32}-`
+	prefix := `anyscale-e2e-[0-9a-f]{32}-`
 	groups := []struct {
 		list     []string
 		template string
@@ -121,7 +121,7 @@ func removePrivateFiles() error {
 	if err != nil || !exactCleanupMount(string(mountinfo)) {
 		return failure("private cleanup requires isolated mount")
 	}
-	marker, err := os.ReadFile("/cleanup/.tailmix-e2e-owner")
+	marker, err := os.ReadFile("/cleanup/.anyscale-e2e-owner")
 	if err != nil || !privateID.Match(marker) {
 		return failure("private cleanup requires owner marker")
 	}

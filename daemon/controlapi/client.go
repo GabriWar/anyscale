@@ -11,9 +11,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/maisem/tailmix/profilesocket"
-	tailmixversion "github.com/maisem/tailmix/version"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 type Client struct {
@@ -30,8 +30,8 @@ func NewClient(socketDir string) *Client {
 	return &Client{http: &http.Client{Transport: transport}}
 }
 
-func (c *Client) Version(ctx context.Context) (tailmixversion.Meta, error) {
-	var out tailmixversion.Meta
+func (c *Client) Version(ctx context.Context) (anyscaleversion.Meta, error) {
+	var out anyscaleversion.Meta
 	err := c.do(ctx, http.MethodGet, "/v1/version", nil, &out)
 	return out, err
 }
@@ -201,7 +201,7 @@ func (c *Client) do(ctx context.Context, method, path string, request, response 
 		}
 		body = &encoded
 	}
-	req, err := http.NewRequestWithContext(ctx, method, "http://tailmix"+path, body)
+	req, err := http.NewRequestWithContext(ctx, method, "http://anyscale"+path, body)
 	if err != nil {
 		return err
 	}
@@ -210,13 +210,13 @@ func (c *Client) do(ctx context.Context, method, path string, request, response 
 	}
 	res, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("connect to tailmix daemon: %w", err)
+		return fmt.Errorf("connect to anyscale daemon: %w", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		var apiErr Error
 		if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&apiErr); err != nil {
-			return fmt.Errorf("tailmix daemon returned %s", res.Status)
+			return fmt.Errorf("anyscale daemon returned %s", res.Status)
 		}
 		return &apiErr
 	}
@@ -224,7 +224,7 @@ func (c *Client) do(ctx context.Context, method, path string, request, response 
 		return nil
 	}
 	if err := json.NewDecoder(io.LimitReader(res.Body, 8<<20)).Decode(response); err != nil {
-		return fmt.Errorf("decode tailmix daemon response: %w", err)
+		return fmt.Errorf("decode anyscale daemon response: %w", err)
 	}
 	return nil
 }

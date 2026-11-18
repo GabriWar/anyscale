@@ -30,7 +30,7 @@ import (
 var peerPageXML string
 
 var peerPageClass = gobj.Widget[PeerPage](gobj.WidgetSpec{
-	Name:     "TrayscalePeerPage",
+	Name:     "AnyscalePeerPage",
 	Parent:   adw.BinGLibType,
 	Template: peerPageXML,
 })
@@ -163,7 +163,7 @@ func (page *PeerPage) init(a *App, status *tsutil.IPNStatus, peer tailcfg.NodeVi
 			}
 		}
 
-		// tailmix picks the exit node, which can take a password, so
+		// anyscale picks the exit node, which can take a password, so
 		// the switch follows once it's done.
 		var exit tailcfg.StableNodeID
 		if s {

@@ -1,4 +1,4 @@
-// Package mkversion derives Tailmix build versions from Git history.
+// Package mkversion derives Anyscale build versions from Git history.
 package mkversion
 
 import (
@@ -13,7 +13,7 @@ import (
 
 const versionFile = "version/VERSION.txt"
 
-// Info is the version information derived for a Tailmix build.
+// Info is the version information derived for a Anyscale build.
 type Info struct {
 	Short       string
 	Long        string

@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Created with Cambalache 1.0.3 -->
-<interface domain="trayscale">
+<interface domain="anyscale">
   <!-- interface-name preferences.ui -->
   <requires lib="gtk" version="4.0"/>
   <requires lib="libadwaita" version="1.6"/>
-  <template class="TrayscalePreferencesDialog" parent="AdwPreferencesDialog">
+  <template class="AnyscalePreferencesDialog" parent="AdwPreferencesDialog">
     <property name="visible-page">PreferencesPage</property>
     <child>
       <object class="AdwPreferencesPage" id="PreferencesPage">

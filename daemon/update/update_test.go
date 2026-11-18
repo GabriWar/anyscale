@@ -16,17 +16,17 @@ import (
 )
 
 func TestApplyVerifiesAndAtomicallyInstallsPair(t *testing.T) {
-	archive := tarball(t, map[string]string{"nested/tailmix": "client", "nested/tailmixd": "daemon", "README": "ignored"})
+	archive := tarball(t, map[string]string{"nested/anyscalectl": "client", "nested/anyscaled": "daemon", "README": "ignored"})
 	sum := sha256.Sum256(archive)
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/latest":
-			fmt.Fprintf(w, `{"tag_name":"v1.2.0","assets":[{"name":"tailmix_1.2.0_linux_amd64.tar.gz","browser_download_url":"%s/archive"},{"name":"checksums.txt","browser_download_url":"%s/sums"}]}`, server.URL, server.URL)
+			fmt.Fprintf(w, `{"tag_name":"v1.2.0","assets":[{"name":"anyscale_1.2.0_linux_amd64.tar.gz","browser_download_url":"%s/archive"},{"name":"checksums.txt","browser_download_url":"%s/sums"}]}`, server.URL, server.URL)
 		case "/archive":
 			_, _ = w.Write(archive)
 		case "/sums":
-			fmt.Fprintf(w, "%x  tailmix_1.2.0_linux_amd64.tar.gz\n", sum)
+			fmt.Fprintf(w, "%x  anyscale_1.2.0_linux_amd64.tar.gz\n", sum)
 		default:
 			http.NotFound(w, r)
 		}
@@ -37,7 +37,7 @@ func TestApplyVerifiesAndAtomicallyInstallsPair(t *testing.T) {
 	if err := os.MkdirAll(oldDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	for _, n := range []string{"tailmix", "tailmixd"} {
+	for _, n := range []string{"anyscalectl", "anyscaled"} {
 		if err := os.WriteFile(filepath.Join(oldDir, n), []byte("old"), 0755); err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestApplyVerifiesAndAtomicallyInstallsPair(t *testing.T) {
 	if target != "versions/v1.2.0" {
 		t.Fatalf("current = %q", target)
 	}
-	for n, want := range map[string]string{"tailmix": "client", "tailmixd": "daemon"} {
+	for n, want := range map[string]string{"anyscalectl": "client", "anyscaled": "daemon"} {
 		got, err := os.ReadFile(filepath.Join(root, target, n))
 		if err != nil || string(got) != want {
 			t.Fatalf("%s = %q, %v", n, got, err)
@@ -80,7 +80,7 @@ func TestApplyVerifiesAndAtomicallyInstallsPair(t *testing.T) {
 }
 
 func TestInstallRejectsBadChecksumWithoutChangingCurrent(t *testing.T) {
-	archive := tarball(t, map[string]string{"tailmix": "a", "tailmixd": "b"})
+	archive := tarball(t, map[string]string{"anyscalectl": "a", "anyscaled": "b"})
 	srv := assetServer(t, archive, []byte("0000  release.tar.gz\n"))
 	defer srv.Close()
 	root := t.TempDir()
@@ -99,14 +99,14 @@ func TestInstallRejectsBadChecksumWithoutChangingCurrent(t *testing.T) {
 }
 
 func TestInstallRequiresBothBinaries(t *testing.T) {
-	archive := tarball(t, map[string]string{"tailmix": "a"})
+	archive := tarball(t, map[string]string{"anyscalectl": "a"})
 	sum := sha256.Sum256(archive)
 	srv := assetServer(t, archive, []byte(fmt.Sprintf("%x  release.tar.gz\n", sum)))
 	defer srv.Close()
 	c := Client{Root: t.TempDir(), GOOS: "linux"}
 	_, err := c.Install(context.Background(), Release{Version: "v2.0.0", ArchiveName: "release.tar.gz", ArchiveURL: srv.URL + "/archive", ChecksumsURL: srv.URL + "/sums"})
 	if err == nil {
-		t.Fatal("Install succeeded without tailmixd")
+		t.Fatal("Install succeeded without anyscaled")
 	}
 }
 

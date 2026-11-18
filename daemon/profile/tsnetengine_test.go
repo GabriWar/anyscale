@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/net/dns/dnsmessage"
 
-	"github.com/maisem/tailmix/tunmux"
+	"github.com/gabriwar/anyscale/daemon/tunmux"
 	"tailscale.com/ipn"
 	"tailscale.com/tailcfg"
 )
@@ -20,7 +20,7 @@ func TestTSNetEngineAcceptsProvidedTunBeforeStart(t *testing.T) {
 		ProfileID: "work",
 		Alias:     "work",
 		Dir:       t.TempDir(),
-		Hostname:  "tailmix-work",
+		Hostname:  "anyscale-work",
 		Tun:       tun,
 	})
 	if engine == nil {

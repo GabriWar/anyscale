@@ -19,7 +19,7 @@ import (
 // The test binary doubles as a real child/grandchild fixture; no external
 // interpreter or shell is needed to exercise process groups and signals.
 func TestBoundedHelper(t *testing.T) {
-	mode := os.Getenv("TAILMIX_BOUNDED_HELPER")
+	mode := os.Getenv("ANYSCALE_BOUNDED_HELPER")
 	if mode == "" {
 		return
 	}
@@ -35,7 +35,7 @@ func TestBoundedHelper(t *testing.T) {
 		os.Exit(7)
 	case "descendant":
 		signal.Ignore(syscall.SIGQUIT)
-		if err := os.WriteFile(os.Getenv("TAILMIX_BOUNDED_PID"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+		if err := os.WriteFile(os.Getenv("ANYSCALE_BOUNDED_PID"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
 			os.Exit(2)
 		}
 		for {
@@ -49,7 +49,7 @@ func TestBoundedHelper(t *testing.T) {
 			signal.Notify(signals, syscall.SIGQUIT)
 		}
 		child := exec.Command(os.Args[0], "-test.run=^TestBoundedHelper$")
-		child.Env = append(os.Environ(), "TAILMIX_BOUNDED_HELPER=descendant")
+		child.Env = append(os.Environ(), "ANYSCALE_BOUNDED_HELPER=descendant")
 		if err := child.Start(); err != nil {
 			os.Exit(3)
 		}
@@ -71,7 +71,7 @@ func helperCommand(t *testing.T, mode string) []string {
 	// An immediate timeout can deliver SIGQUIT before the child installs its
 	// runtime handlers. Keep any resulting core dump in test-owned storage.
 	t.Chdir(t.TempDir())
-	t.Setenv("TAILMIX_BOUNDED_HELPER", mode)
+	t.Setenv("ANYSCALE_BOUNDED_HELPER", mode)
 	// Race-instrumented child processes otherwise pause for one second during
 	// os.Exit, obscuring the leader-exited-before-grace regression.
 	t.Setenv("GORACE", "atexit_sleep_ms=0")
@@ -126,7 +126,7 @@ func TestRunBoundedKillsProcessGroup(t *testing.T) {
 	for _, mode := range []string{"leader", "ignore"} {
 		t.Run(mode, func(t *testing.T) {
 			pidPath := filepath.Join(t.TempDir(), "pid")
-			t.Setenv("TAILMIX_BOUNDED_PID", pidPath)
+			t.Setenv("ANYSCALE_BOUNDED_PID", pidPath)
 			start := time.Now()
 			// Allow cold, race-instrumented child and grandchild startup on
 			// constrained CI runners before exercising the actual deadline.
@@ -174,7 +174,7 @@ func TestDeadlineAlwaysReturnsTimeout(t *testing.T) {
 }
 
 func TestRunArguments(t *testing.T) {
-	for _, args := range [][]string{nil, {"1"}, {"nan", "x"}, {"inf", "x"}, {"-1", "x"}, {"1e100", "x"}, {"1", "--"}, {"1", "/nonexistent/tailmix-benchmark"}} {
+	for _, args := range [][]string{nil, {"1"}, {"nan", "x"}, {"inf", "x"}, {"-1", "x"}, {"1e100", "x"}, {"1", "--"}, {"1", "/nonexistent/anyscale-benchmark"}} {
 		var stderr bytes.Buffer
 		if got := run(args, &stderr); got != 1 || stderr.Len() == 0 {
 			t.Fatalf("run(%q) = %d, stderr=%q", args, got, stderr.String())

@@ -36,7 +36,7 @@ func TestUpdateDoesNotLeakExitNodeAction(t *testing.T) {
 	requireGTK(t)
 
 	a := &App{operatorCheck: true}
-	a.app = adw.NewApplication("dev.deedles.Trayscale.test.exit-node", gio.GApplicationNonUniqueValue)
+	a.app = adw.NewApplication("io.github.gabriwar.Anyscale.test.exit-node", gio.GApplicationNonUniqueValue)
 	defer a.app.Unref()
 
 	action := gio.NewSimpleActionStateful("use_exit_node", nil, glib.NewVariantBoolean(false))
@@ -140,9 +140,9 @@ func TestReplaceExistingFile(t *testing.T) {
 }
 
 func TestHelpOmitsCatalogHeader(t *testing.T) {
-	if os.Getenv("TRAYSCALE_HELP_REPRO") != "1" {
+	if os.Getenv("ANYSCALE_HELP_REPRO") != "1" {
 		cmd := exec.Command(os.Args[0], "-test.run=^TestHelpOmitsCatalogHeader$")
-		cmd.Env = append(os.Environ(), "TRAYSCALE_HELP_REPRO=1")
+		cmd.Env = append(os.Environ(), "ANYSCALE_HELP_REPRO=1")
 		out, err := cmd.CombinedOutput()
 		text := string(out)
 		if strings.Contains(text, "Project-Id-Version") {
@@ -162,15 +162,15 @@ func TestHelpOmitsCatalogHeader(t *testing.T) {
 		t.Fatal(err)
 	}
 	locale.Init(po)
-	header := dgettext("trayscale", "")
+	header := dgettext("anyscale", "")
 	if !strings.Contains(header, "Project-Id-Version") {
 		t.Fatalf("catalog header = %q, want Project-Id-Version", header)
 	}
 
-	app := gio.NewApplication("dev.deedles.Trayscale.test.help", gio.GApplicationNonUniqueValue)
+	app := gio.NewApplication("io.github.gabriwar.Anyscale.test.help", gio.GApplicationNonUniqueValue)
 	defer app.Unref()
 	addHideWindowOption(app)
-	app.Run(2, []string{"trayscale", "--help"})
+	app.Run(2, []string{"anyscale", "--help"})
 }
 
 func dgettext(domain, msgid string) string {

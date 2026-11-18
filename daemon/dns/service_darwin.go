@@ -16,13 +16,13 @@ const platformGOOS = "darwin"
 
 const (
 	defaultResolverDir        = "/etc/resolver"
-	tailmixSearchResolverFile = "search.tailmix"
-	tailmixResolverFileHeader = "# This file is managed by tailmix.\n"
+	anyscaleSearchResolverFile = "search.anyscale"
+	anyscaleResolverFileHeader = "# This file is managed by anyscale.\n"
 )
 
 // splitDNSConfigurator makes Manager compile MagicDNS as native split DNS.
 // The stock Darwin Manager blends the machine's base resolvers into quad-100
-// because some Apple DNS APIs cannot express selective local records. tailmix only
+// because some Apple DNS APIs cannot express selective local records. anyscale only
 // serves complete tailnet suffixes, so /etc/resolver is the better fit here.
 type splitDNSConfigurator struct {
 	tailscaledns.OSConfigurator
@@ -35,7 +35,7 @@ func (c *splitDNSConfigurator) SetDNS(cfg tailscaledns.OSConfig) error {
 	if global {
 		// The synthetic global resolver's SearchDomains do not reliably
 		// expand single-label names. Keep using the /etc/resolver search
-		// mechanism that macOS uses for tailmix's split-DNS configuration.
+		// mechanism that macOS uses for anyscale's split-DNS configuration.
 		osCfg.SearchDomains = nil
 	}
 	if err := c.OSConfigurator.SetDNS(osCfg); err != nil {
@@ -67,14 +67,14 @@ func (c *splitDNSConfigurator) writeSearchDomains(domains []dnsname.FQDN) error 
 	defer root.Close()
 
 	var content strings.Builder
-	content.WriteString(tailmixResolverFileHeader)
+	content.WriteString(anyscaleResolverFileHeader)
 	content.WriteString("search")
 	for _, domain := range domains {
 		content.WriteByte(' ')
 		content.WriteString(string(domain.WithoutTrailingDot()))
 	}
 	content.WriteByte('\n')
-	return root.WriteFile(tailmixSearchResolverFile, []byte(content.String()), 0644)
+	return root.WriteFile(anyscaleSearchResolverFile, []byte(content.String()), 0644)
 }
 
 func (c *splitDNSConfigurator) removeSearchDomains() error {
@@ -86,7 +86,7 @@ func (c *splitDNSConfigurator) removeSearchDomains() error {
 		return err
 	}
 	defer root.Close()
-	if err := root.Remove(tailmixSearchResolverFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
+	if err := root.Remove(anyscaleSearchResolverFile); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	return nil

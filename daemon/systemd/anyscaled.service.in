@@ -1,0 +1,19 @@
+[Unit]
+Description=Anyscale multi-tailnet networking daemon
+Documentation=https://github.com/GabriWar/anyscale
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+Environment="ANYSCALED_FLAGS="
+ExecStart=@BINDIR@/anyscaled -state=/var/lib/anyscale/state.json -socket-dir=/var/run/anyscale $ANYSCALED_FLAGS
+Restart=on-failure
+RestartSec=5s
+StateDirectory=anyscale
+StateDirectoryMode=0700
+RuntimeDirectory=anyscale
+RuntimeDirectoryMode=0755
+
+[Install]
+WantedBy=multi-user.target

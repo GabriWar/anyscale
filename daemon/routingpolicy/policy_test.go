@@ -4,8 +4,8 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/state"
+	"github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/state"
 	"tailscale.com/types/dnstype"
 )
 

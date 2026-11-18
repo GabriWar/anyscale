@@ -5,10 +5,10 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
-// DaemonState describes whether tailmix is running profile data planes.
+// DaemonState describes whether anyscale is running profile data planes.
 type DaemonState struct {
 	State string `json:"state"`
 }

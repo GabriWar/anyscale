@@ -4,8 +4,8 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/profile"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/profile"
 )
 
 func TestProjectShowsCanonicalAndEffectiveIPs(t *testing.T) {

@@ -12,7 +12,7 @@ import (
 var preferencesXML string
 
 var preferencesDialogClass = gobj.Widget[PreferencesDialog](gobj.WidgetSpec{
-	Name:     "TrayscalePreferencesDialog",
+	Name:     "AnyscalePreferencesDialog",
 	Parent:   adw.PreferencesDialogGLibType,
 	Template: preferencesXML,
 })

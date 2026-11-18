@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/maisem/tailmix/hosttun"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/state"
-	"github.com/maisem/tailmix/tunmux"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/hosttun"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/state"
+	"github.com/gabriwar/anyscale/daemon/tunmux"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"github.com/tailscale/wireguard-go/conn/bindtest"
 	"github.com/tailscale/wireguard-go/tun"
 )
@@ -160,7 +160,7 @@ func TestWireGuardApplyReconcileFailureKeepsSavedDesiredStateAndDegradedRuntime(
 
 	raw := tunmux.NewChanTUN("wireguard-apply-profile")
 	binds := bindtest.NewChannelBinds()
-	engine := tailmixprofile.NewWireGuardEngine(tailmixprofile.WireGuardEngineConfig{
+	engine := anyscaleprofile.NewWireGuardEngine(anyscaleprofile.WireGuardEngineConfig{
 		ProfileID: configured.ID, Config: configured.WireGuard.Clone(),
 		Secrets: wireguardcfg.Secrets{PrivateKey: &private}, Tun: raw, Bind: binds[0],
 	})
@@ -237,7 +237,7 @@ func TestWireGuardShieldsUpRunningPersistenceFailureRestoresState(t *testing.T) 
 	}
 	raw := tunmux.NewChanTUN("shields-test")
 	binds := bindtest.NewChannelBinds()
-	engine := tailmixprofile.NewWireGuardEngine(tailmixprofile.WireGuardEngineConfig{
+	engine := anyscaleprofile.NewWireGuardEngine(anyscaleprofile.WireGuardEngineConfig{
 		ProfileID: configured.ID, Config: configured.WireGuard.Clone(),
 		Secrets: wireguardcfg.Secrets{PrivateKey: &private}, Tun: raw, Bind: binds[0],
 	})

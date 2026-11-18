@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Measure TCP goodput through two complete Tailmix WireGuard stacks in isolated
+# Measure TCP goodput through two complete Anyscale WireGuard stacks in isolated
 # Linux network namespaces. Results describe this machine and are not portable
 # performance assertions.
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/tailmix-wireguard-benchmark.XXXXXX")
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/anyscale-wireguard-benchmark.XXXXXX")
 run_id=$$
 ns_a="tmwgba${run_id}"
 ns_b="tmwgbb${run_id}"
@@ -55,8 +55,8 @@ iperf3_bin=$(command -v iperf3)
 mkdir -p "$work_dir/bin" "$work_dir/a/run" "$work_dir/b/run" "$work_dir/results"
 (
 	cd "$repo_root"
-	go build -o "$work_dir/bin/tailmixd" ./cmd/tailmixd
-	go build -o "$work_dir/bin/tailmix" ./cmd/tailmix
+	go build -o "$work_dir/bin/anyscaled" ./cmd/anyscaled
+	go build -o "$work_dir/bin/anyscalectl" ./cmd/anyscalectl
 	go build -o "$work_dir/bin/integration-tool" ./cmd/integration-tool
 )
 
@@ -82,17 +82,17 @@ sudo ip -n "$ns_b" address add 192.0.2.2/30 dev underlay0
 sudo ip -n "$ns_a" link set underlay0 up
 sudo ip -n "$ns_b" link set underlay0 up
 
-sudo ip netns exec "$ns_a" "$work_dir/bin/tailmixd" \
+sudo ip netns exec "$ns_a" "$work_dir/bin/anyscaled" \
 	-auto-update=false \
 	-state "$work_dir/a/state.json" \
 	-socket-dir "$work_dir/a/run" \
-	-tun-name tailmix0 >"$work_dir/a-daemon.log" 2>&1 &
+	-tun-name anyscale0 >"$work_dir/a-daemon.log" 2>&1 &
 background_pids+=("$!")
-sudo ip netns exec "$ns_b" "$work_dir/bin/tailmixd" \
+sudo ip netns exec "$ns_b" "$work_dir/bin/anyscaled" \
 	-auto-update=false \
 	-state "$work_dir/b/state.json" \
 	-socket-dir "$work_dir/b/run" \
-	-tun-name tailmix0 >"$work_dir/b-daemon.log" 2>&1 &
+	-tun-name anyscale0 >"$work_dir/b-daemon.log" 2>&1 &
 background_pids+=("$!")
 
 wait_for_file() {
@@ -104,8 +104,8 @@ wait_for_file() {
 	return 1
 }
 
-wait_for_file "$work_dir/a/run/tailmixd.sock" || fail "first daemon did not create its control socket"
-wait_for_file "$work_dir/b/run/tailmixd.sock" || fail "second daemon did not create its control socket"
+wait_for_file "$work_dir/a/run/anyscaled.sock" || fail "first daemon did not create its control socket"
+wait_for_file "$work_dir/b/run/anyscaled.sock" || fail "second daemon did not create its control socket"
 
 write_manifest() {
 	local side=$1 name self_address peer_name peer_address peer_public endpoint private_file
@@ -150,8 +150,8 @@ YAML
 apply_profile() {
 	local side=$1
 	write_manifest "$side"
-	sudo env TAILMIX_SOCKET_DIR="$work_dir/$side/run" \
-		"$work_dir/bin/tailmix" wireguard apply --file "$work_dir/$side.yaml" --json \
+	sudo env ANYSCALE_SOCKET_DIR="$work_dir/$side/run" \
+		"$work_dir/bin/anyscalectl" wireguard apply --file "$work_dir/$side.yaml" --json \
 		>"$work_dir/$side-profile.json"
 }
 
@@ -205,7 +205,7 @@ fi
 cpu_model=$(awk -F: '/model name/ {sub(/^[ \t]+/, "", $2); print $2; exit}' /proc/cpuinfo)
 logical_cpus=$(getconf _NPROCESSORS_ONLN)
 
-printf 'Tailmix WireGuard end-to-end benchmark\n'
+printf 'Anyscale WireGuard end-to-end benchmark\n'
 printf 'date_utc: %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 printf 'commit: %s (%s)\n' "$commit" "$worktree_state"
 printf 'go: %s\n' "$(go version)"

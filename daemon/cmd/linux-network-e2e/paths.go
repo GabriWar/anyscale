@@ -140,7 +140,7 @@ func findRoot(start string) (string, error) {
 	}
 	for {
 		mod, err := os.ReadFile(filepath.Join(dir, "go.mod"))
-		if err == nil && strings.HasPrefix(string(mod), "module github.com/maisem/tailmix\n") {
+		if err == nil && strings.HasPrefix(string(mod), "module github.com/gabriwar/anyscale/daemon\n") {
 			if info, err := os.Stat(filepath.Join(dir, "integration", "linux_network.Dockerfile")); err == nil && info.Mode().IsRegular() {
 				return dir, nil
 			}

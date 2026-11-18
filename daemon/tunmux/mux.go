@@ -11,8 +11,8 @@ import (
 	"github.com/tailscale/wireguard-go/device"
 	"github.com/tailscale/wireguard-go/tun"
 
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/packetmap"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/packetmap"
 	tspacket "tailscale.com/net/packet"
 	"tailscale.com/types/logger"
 )

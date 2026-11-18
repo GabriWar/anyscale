@@ -13,8 +13,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
 	"github.com/tailscale/peercred"
 	"tailscale.com/client/local"
 	"tailscale.com/ipn"

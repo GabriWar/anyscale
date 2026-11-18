@@ -1,45 +1,45 @@
 version: 2
 
-project_name: tailmix
+project_name: anyscale
 
 before:
   hooks:
     - go mod tidy -diff
 
 builds:
-  - id: tailmix
-    main: ./cmd/tailmix
-    binary: tailmix
+  - id: anyscale
+    main: ./cmd/anyscalectl
+    binary: anyscale
     env: [CGO_ENABLED=0]
     goos: [linux, darwin]
     goarch: [amd64, arm64]
     ldflags:
       - -s -w
-      - -X github.com/maisem/tailmix/version.shortStamp={{ .Tag }}
-      - -X github.com/maisem/tailmix/version.longStamp={{ .Tag }}
-      - -X github.com/maisem/tailmix/version.gitCommitStamp={{ .FullCommit }}
-  - id: tailmixd
-    main: ./cmd/tailmixd
-    binary: tailmixd
+      - -X github.com/gabriwar/anyscale/daemon/version.shortStamp={{ .Tag }}
+      - -X github.com/gabriwar/anyscale/daemon/version.longStamp={{ .Tag }}
+      - -X github.com/gabriwar/anyscale/daemon/version.gitCommitStamp={{ .FullCommit }}
+  - id: anyscaled
+    main: ./cmd/anyscaled
+    binary: anyscaled
     env: [CGO_ENABLED=0]
     goos: [linux, darwin]
     goarch: [amd64, arm64]
     ldflags:
       - -s -w
-      - -X github.com/maisem/tailmix/version.shortStamp={{ .Tag }}
-      - -X github.com/maisem/tailmix/version.longStamp={{ .Tag }}
-      - -X github.com/maisem/tailmix/version.gitCommitStamp={{ .FullCommit }}
+      - -X github.com/gabriwar/anyscale/daemon/version.shortStamp={{ .Tag }}
+      - -X github.com/gabriwar/anyscale/daemon/version.longStamp={{ .Tag }}
+      - -X github.com/gabriwar/anyscale/daemon/version.gitCommitStamp={{ .FullCommit }}
 
 archives:
-  - ids: [tailmix, tailmixd]
-    name_template: "tailmix_{{ .Os }}_{{ .Arch }}"
+  - ids: [anyscale, anyscaled]
+    name_template: "anyscale_{{ .Os }}_{{ .Arch }}"
     files:
       - LICENSE
       - README.md
-      - src: systemd/tailmixd.service.in
-        dst: service/tailmixd.service.in
-      - src: launchd/io.github.maisem.tailmixd.plist.in
-        dst: service/io.github.maisem.tailmixd.plist.in
+      - src: systemd/anyscaled.service.in
+        dst: service/anyscaled.service.in
+      - src: launchd/io.github.gabriwar.anyscaled.plist.in
+        dst: service/io.github.gabriwar.anyscaled.plist.in
 
 checksum:
   name_template: checksums.txt

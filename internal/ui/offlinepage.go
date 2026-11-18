@@ -13,7 +13,7 @@ import (
 var offlinePageXML string
 
 var offlinePageClass = gobj.Widget[OfflinePage](gobj.WidgetSpec{
-	Name:     "TrayscaleOfflinePage",
+	Name:     "AnyscaleOfflinePage",
 	Parent:   adw.BinGLibType,
 	Template: offlinePageXML,
 })

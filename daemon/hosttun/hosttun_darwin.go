@@ -53,7 +53,7 @@ type darwinHost struct {
 
 func Open(cfg OpenConfig) (Host, error) {
 	if os.Geteuid() != 0 {
-		return nil, errors.New("darwin TUN mode requires root; run tailmixd with sudo")
+		return nil, errors.New("darwin TUN mode requires root; run anyscaled with sudo")
 	}
 	if cfg.Name == "" {
 		cfg.Name = "utun"

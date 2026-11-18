@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maisem/tailmix/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
 )
 
 // These are wire-level tests, not tailnet integration tests: profile dialers

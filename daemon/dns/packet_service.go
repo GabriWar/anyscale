@@ -92,7 +92,7 @@ func (c *packetTCPConn) Close() error {
 	return c.closeErr
 }
 
-// packetService terminates tailmix's synthetic resolver address and the
+// packetService terminates anyscale's synthetic resolver address and the
 // Tailscale service IP in a small gVisor stack. It has no kernel listeners;
 // packets enter and leave through HandlePacket and Outbound, which are wired
 // to the shared host TUN by tunmux.

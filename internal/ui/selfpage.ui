@@ -1,10 +1,10 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- Created with Cambalache 1.0 -->
-<interface domain="trayscale">
+<interface domain="anyscale">
   <!-- interface-name selfpage.ui -->
   <requires lib="gtk" version="4.18"/>
   <requires lib="libadwaita" version="1.6"/>
-  <template class="TrayscaleSelfPage" parent="AdwBin">
+  <template class="AnyscaleSelfPage" parent="AdwBin">
     <property name="child">
       <object class="AdwStatusPage" id="Page">
         <child>

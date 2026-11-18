@@ -16,18 +16,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/maisem/tailmix/controlapi"
-	tailmixdns "github.com/maisem/tailmix/dns"
-	"github.com/maisem/tailmix/effectiveip"
-	"github.com/maisem/tailmix/hosttun"
-	"github.com/maisem/tailmix/packetmap"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/profilesocket"
-	"github.com/maisem/tailmix/routingpolicy"
-	"github.com/maisem/tailmix/socksproxy"
-	"github.com/maisem/tailmix/state"
-	"github.com/maisem/tailmix/tunmux"
-	"github.com/maisem/tailmix/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	anyscaledns "github.com/gabriwar/anyscale/daemon/dns"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	"github.com/gabriwar/anyscale/daemon/hosttun"
+	"github.com/gabriwar/anyscale/daemon/packetmap"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/routingpolicy"
+	"github.com/gabriwar/anyscale/daemon/socksproxy"
+	"github.com/gabriwar/anyscale/daemon/state"
+	"github.com/gabriwar/anyscale/daemon/tunmux"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 	"tailscale.com/types/dnstype"
 )
 
@@ -52,7 +52,7 @@ type daemonConfig struct {
 type managedProfile struct {
 	runtime     runtimeProfile
 	cancel      context.CancelFunc
-	status      tailmixprofile.Status
+	status      anyscaleprofile.Status
 	statusFresh bool
 }
 
@@ -82,8 +82,8 @@ type supervisor struct {
 	dnsPolicy     routingpolicy.DNSPlan
 	host          hosttun.Host
 	mux           *tunmux.Mux
-	dnsService    tailmixdns.Service
-	dnsForwarders []*tailmixdns.Forwarder
+	dnsService    anyscaledns.Service
+	dnsForwarders []*anyscaledns.Forwarder
 	socksListener net.Listener
 	socksRouter   *socksproxy.DynamicRouter
 	networkErr    chan error
@@ -273,7 +273,7 @@ func (s *supervisor) requireDaemonUpLocked() error {
 	if !s.st.Down {
 		return nil
 	}
-	return controlapi.NewError("daemon_down", "tailmix is down; run \"tailmix up\" first")
+	return controlapi.NewError("daemon_down", "anyscale is down; run \"anyscale up\" first")
 }
 
 func (s *supervisor) startAggregateLocked() error {
@@ -284,7 +284,7 @@ func (s *supervisor) startAggregateLocked() error {
 			return err
 		}
 		s.host = host
-		dnsService, err := tailmixdns.StartService(tailmixdns.ServiceConfig{
+		dnsService, err := anyscaledns.StartService(anyscaledns.ServiceConfig{
 			TunName:    host.Name(),
 			ResolverIP: s.st.DNSIP,
 			Logf:       prefixedLogf(s.cfg.Stderr, "dns"),
@@ -340,7 +340,7 @@ func (s *supervisor) startProfileLockedWithWireGuardTransition(configured state.
 	rp := runtimeProfile{State: configured, AuthKeyEnv: authKeyEnv}
 	var profileTUN *tunmux.ChanTUN
 	if s.cfg.Mode == "tun" {
-		profileTUN = tunmux.NewChanTUN("tailmix-" + dnsLabel(configured.ID))
+		profileTUN = tunmux.NewChanTUN("anyscale-" + dnsLabel(configured.ID))
 		rp.Tun = profileTUN
 	}
 	switch configured.Kind {
@@ -353,7 +353,7 @@ func (s *supervisor) startProfileLockedWithWireGuardTransition(configured state.
 		if authKey != "" {
 			cfg.AuthKey = authKey
 		}
-		rp.Engine = tailmixprofile.NewTSNetEngine(cfg)
+		rp.Engine = anyscaleprofile.NewTSNetEngine(cfg)
 	case state.ProfileKindWireGuard:
 		if s.cfg.Mode != "tun" {
 			cancel()
@@ -368,7 +368,7 @@ func (s *supervisor) startProfileLockedWithWireGuardTransition(configured state.
 			cancel()
 			return fmt.Errorf("read WireGuard profile secrets: %w", err)
 		}
-		rp.Engine = tailmixprofile.NewWireGuardEngine(tailmixprofile.WireGuardEngineConfig{
+		rp.Engine = anyscaleprofile.NewWireGuardEngine(anyscaleprofile.WireGuardEngineConfig{
 			ProfileID:       configured.ID,
 			Alias:           profileName(configured),
 			Config:          configured.WireGuard.Clone(),
@@ -396,7 +396,7 @@ func (s *supervisor) startProfileLockedWithWireGuardTransition(configured state.
 			return err
 		}
 	}
-	if _, exposesLocalAPI := rp.Engine.(tailmixprofile.LocalBackendProvider); exposesLocalAPI {
+	if _, exposesLocalAPI := rp.Engine.(anyscaleprofile.LocalBackendProvider); exposesLocalAPI {
 		if err := s.profileAPIs.Start(rp); err != nil {
 			if s.mux != nil {
 				s.mux.RemoveProfile(configured.ID)
@@ -418,7 +418,7 @@ func (s *supervisor) startProfileLockedWithWireGuardTransition(configured state.
 	return nil
 }
 
-func (s *supervisor) watchProfile(ctx context.Context, profileID string, engine tailmixprofile.Engine) {
+func (s *supervisor) watchProfile(ctx context.Context, profileID string, engine anyscaleprofile.Engine) {
 	err := engine.WatchUpdates(ctx, func() {
 		select {
 		case s.updates <- runtimeUpdate{profileID: profileID}:
@@ -512,7 +512,7 @@ func (s *supervisor) reconcileLocked() (err error) {
 			profiles = append(profiles, socksproxy.Profile{
 				ID:             status.ProfileID,
 				MagicDNSSuffix: status.MagicDNSSuffix,
-				Dialer:         tailmixprofile.SOCKSDialer{Engine: managed.runtime.Engine},
+				Dialer:         anyscaleprofile.SOCKSDialer{Engine: managed.runtime.Engine},
 			})
 		}
 		var subnetRoutes []socksproxy.SubnetRoute
@@ -574,8 +574,8 @@ func (s *supervisor) reconcileLocked() (err error) {
 	return nil
 }
 
-func usableStatuses(statuses []tailmixprofile.Status) []tailmixprofile.Status {
-	out := make([]tailmixprofile.Status, 0, len(statuses))
+func usableStatuses(statuses []anyscaleprofile.Status) []anyscaleprofile.Status {
+	out := make([]anyscaleprofile.Status, 0, len(statuses))
 	for _, status := range statuses {
 		if status.BackendState == "" || status.BackendState == "Running" {
 			out = append(out, status)
@@ -584,16 +584,16 @@ func usableStatuses(statuses []tailmixprofile.Status) []tailmixprofile.Status {
 	return out
 }
 
-func engineApplyDegraded(engine tailmixprofile.Engine) bool {
+func engineApplyDegraded(engine anyscaleprofile.Engine) bool {
 	reporter, ok := engine.(interface{ ApplyDegraded() bool })
 	return ok && reporter.ApplyDegraded()
 }
 
-func (s *supervisor) statusesLocked() []tailmixprofile.Status {
+func (s *supervisor) statusesLocked() []anyscaleprofile.Status {
 	if s.st.Down {
 		return nil
 	}
-	var statuses []tailmixprofile.Status
+	var statuses []anyscaleprofile.Status
 	for _, configured := range s.st.Profiles {
 		if configured.Disabled || configured.Removed {
 			continue
@@ -629,7 +629,7 @@ func (s *supervisor) setRoutePreferencesLocked() error {
 		if managed.status.BackendState != "Running" {
 			continue
 		}
-		controller, ok := managed.runtime.Engine.(tailmixprofile.RoutePreferenceController)
+		controller, ok := managed.runtime.Engine.(anyscaleprofile.RoutePreferenceController)
 		if !ok {
 			return fmt.Errorf("profile %q does not support route acceptance", s.nameForIDLocked(id))
 		}
@@ -642,7 +642,7 @@ func (s *supervisor) setRoutePreferencesLocked() error {
 	return nil
 }
 
-func (s *supervisor) setExitNodePreferencesLocked(statuses []tailmixprofile.Status) error {
+func (s *supervisor) setExitNodePreferencesLocked(statuses []anyscaleprofile.Status) error {
 	current := make(map[string]string, len(statuses))
 	for _, status := range statuses {
 		current[status.ProfileID] = status.ExitNodeID
@@ -660,7 +660,7 @@ func (s *supervisor) setExitNodePreferencesLocked(statuses []tailmixprofile.Stat
 		if managed.status.BackendState != "Running" {
 			continue
 		}
-		controller, ok := managed.runtime.Engine.(tailmixprofile.ExitNodePreferenceController)
+		controller, ok := managed.runtime.Engine.(anyscaleprofile.ExitNodePreferenceController)
 		if !ok {
 			if wantID == "" {
 				continue
@@ -675,8 +675,8 @@ func (s *supervisor) setExitNodePreferencesLocked(statuses []tailmixprofile.Stat
 	return nil
 }
 
-func (s *supervisor) configureDNSLocked(cfg tailmixdns.LiveConfig) error {
-	nextForwarders := make([]*tailmixdns.Forwarder, 0, len(cfg.Routes))
+func (s *supervisor) configureDNSLocked(cfg anyscaledns.LiveConfig) error {
+	nextForwarders := make([]*anyscaledns.Forwarder, 0, len(cfg.Routes))
 	for i := range cfg.Routes {
 		if cfg.Routes[i].ProfileDNS {
 			managed := s.runtimes[cfg.Routes[i].ProfileID]
@@ -684,12 +684,12 @@ func (s *supervisor) configureDNSLocked(cfg tailmixdns.LiveConfig) error {
 				closeForwarders(nextForwarders)
 				return fmt.Errorf("DNS route %q selected unavailable profile %q", cfg.Routes[i].Suffix, cfg.Routes[i].ProfileID)
 			}
-			queryer, ok := managed.runtime.Engine.(tailmixdns.ProfileDNSQueryer)
+			queryer, ok := managed.runtime.Engine.(anyscaledns.ProfileDNSQueryer)
 			if !ok {
 				closeForwarders(nextForwarders)
 				return fmt.Errorf("profile %q does not expose its effective DNS resolver", s.nameForIDLocked(cfg.Routes[i].ProfileID))
 			}
-			forwarder, err := tailmixdns.StartProfileDNSForwarder(s.ctx, queryer)
+			forwarder, err := anyscaledns.StartProfileDNSForwarder(s.ctx, queryer)
 			if err != nil {
 				closeForwarders(nextForwarders)
 				return fmt.Errorf("start profile %q effective DNS forwarder: %w", s.nameForIDLocked(cfg.Routes[i].ProfileID), err)
@@ -706,7 +706,7 @@ func (s *supervisor) configureDNSLocked(cfg tailmixdns.LiveConfig) error {
 			closeForwarders(nextForwarders)
 			return fmt.Errorf("DNS route %q selected unavailable profile %q", cfg.Routes[i].Suffix, cfg.Routes[i].ProfileID)
 		}
-		forwarder, err := tailmixdns.StartForwarder(s.ctx, managed.runtime.Engine, cfg.Routes[i].Resolvers)
+		forwarder, err := anyscaledns.StartForwarder(s.ctx, managed.runtime.Engine, cfg.Routes[i].Resolvers)
 		if err != nil {
 			closeForwarders(nextForwarders)
 			return fmt.Errorf("start profile %q DNS forwarder: %w", s.nameForIDLocked(cfg.Routes[i].ProfileID), err)
@@ -726,7 +726,7 @@ func (s *supervisor) configureDNSLocked(cfg tailmixdns.LiveConfig) error {
 	return nil
 }
 
-func closeForwarders(forwarders []*tailmixdns.Forwarder) {
+func closeForwarders(forwarders []*anyscaledns.Forwarder) {
 	for _, forwarder := range forwarders {
 		_ = forwarder.Close()
 	}
@@ -1015,7 +1015,7 @@ func (s *supervisor) AddProfile(_ context.Context, request controlapi.AddProfile
 		if err != nil {
 			return controlapi.Profile{}, err
 		}
-		hostname = "tailmix-" + suffix
+		hostname = "anyscale-" + suffix
 	}
 	stateDir := strings.TrimSpace(request.StateDir)
 	if stateDir == "" {

@@ -7,13 +7,13 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/maisem/tailmix/controlapi"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/state"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/state"
 )
 
 type exitPreferenceEngine struct {
-	status       tailmixprofile.Status
+	status       anyscaleprofile.Status
 	changes      []netip.Addr
 	routeChanges []bool
 }
@@ -23,7 +23,7 @@ func (e *exitPreferenceEngine) Close() error                { return nil }
 func (e *exitPreferenceEngine) Dial(context.Context, string, string) (net.Conn, error) {
 	return nil, net.ErrClosed
 }
-func (e *exitPreferenceEngine) Status(context.Context) (tailmixprofile.Status, error) {
+func (e *exitPreferenceEngine) Status(context.Context) (anyscaleprofile.Status, error) {
 	return e.status, nil
 }
 func (e *exitPreferenceEngine) WatchUpdates(context.Context, func()) error { return nil }
@@ -115,9 +115,9 @@ func TestApplyDNSPatchUsesDNSNameCanonicalization(t *testing.T) {
 
 func TestSelectExitNodePeerAcceptsProfileScopedSelectors(t *testing.T) {
 	exitIP := netip.MustParseAddr("100.64.0.20")
-	status := tailmixprofile.Status{
+	status := anyscaleprofile.Status{
 		Alias: "work",
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID: "node-stable-id", DNSName: "gateway.work.ts.net",
 			TailscaleIPs: []netip.Addr{exitIP}, ExitNodeOption: true,
 		}},
@@ -140,17 +140,17 @@ func TestExitNodeResourceReportsSelectedState(t *testing.T) {
 	exitIP := netip.MustParseAddr("100.64.0.20")
 	s := &supervisor{st: testPolicyState()}
 	s.st.ExitNode = &state.ExitNode{ProfileID: "p_work", NodeID: "node-id", PeerIP: exitIP}
-	status := tailmixprofile.Status{
+	status := anyscaleprofile.Status{
 		ProfileID: "p_work", BackendState: "Running", ExitNodeID: "node-id",
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID: "node-id", DNSName: "gateway.work.ts.net",
 			TailscaleIPs: []netip.Addr{exitIP}, Online: true, ExitNodeOption: true,
-			Location: &tailmixprofile.PeerLocation{
+			Location: &anyscaleprofile.PeerLocation{
 				Country: "Canada", CountryCode: "CA", City: "Squamish", CityCode: "YSE", Priority: 10,
 			},
 		}},
 	}
-	result := s.exitNodesLocked([]tailmixprofile.Status{status})
+	result := s.exitNodesLocked([]anyscaleprofile.Status{status})
 	if result.Selected == nil || result.Selected.State != "installed" ||
 		result.Selected.ProfileName != "work" || !result.Selected.Online {
 		t.Fatalf("exit-node resource = %+v", result)
@@ -167,7 +167,7 @@ func TestExitNodeResourceReportsSelectedState(t *testing.T) {
 	}
 
 	status.ExitNodeID = ""
-	result = s.exitNodesLocked([]tailmixprofile.Status{status})
+	result = s.exitNodesLocked([]anyscaleprofile.Status{status})
 	if result.Selected == nil || result.Selected.State != "waiting" ||
 		result.Selected.Reason != "exit_node_not_applied" {
 		t.Fatalf("exit-node resource before preference applies = %+v", result.Selected)
@@ -177,13 +177,13 @@ func TestExitNodeResourceReportsSelectedState(t *testing.T) {
 func TestStatusReportsSelectedPolicyWithoutAvailableChoices(t *testing.T) {
 	exitIP := netip.MustParseAddr("100.64.0.20")
 	prefix := netip.MustParsePrefix("10.20.0.0/16")
-	engine := &exitPreferenceEngine{status: tailmixprofile.Status{
+	engine := &exitPreferenceEngine{status: anyscaleprofile.Status{
 		ProfileID: "p_work", Alias: "work", BackendState: "Running",
 		MagicDNSSuffix: "work.example", ExitNodeID: "exit-node",
-		AvailableRoutes: []tailmixprofile.RouteStatus{{
+		AvailableRoutes: []anyscaleprofile.RouteStatus{{
 			Prefix: prefix, PrimaryRouter: "subnet-router",
 		}},
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID: "exit-node", DNSName: "gateway.work.example",
 			TailscaleIPs: []netip.Addr{exitIP}, Online: true, ExitNodeOption: true,
 		}},
@@ -228,13 +228,13 @@ func TestStatusReportsSelectedPolicyWithoutAvailableChoices(t *testing.T) {
 }
 
 func TestExitNodePreferenceReconciliationSelectsOnlyOneProfile(t *testing.T) {
-	work := &exitPreferenceEngine{status: tailmixprofile.Status{
+	work := &exitPreferenceEngine{status: anyscaleprofile.Status{
 		ProfileID: "p_work", BackendState: "Running",
-		Peers: []tailmixprofile.PeerStatus{{
+		Peers: []anyscaleprofile.PeerStatus{{
 			NodeID: "selected-node", TailscaleIPs: []netip.Addr{netip.MustParseAddr("100.64.0.20")},
 		}},
 	}}
-	lab := &exitPreferenceEngine{status: tailmixprofile.Status{
+	lab := &exitPreferenceEngine{status: anyscaleprofile.Status{
 		ProfileID: "p_lab", BackendState: "Running", ExitNodeID: "stale-node",
 	}}
 	s := &supervisor{
@@ -256,7 +256,7 @@ func TestExitNodePreferenceReconciliationSelectsOnlyOneProfile(t *testing.T) {
 		ProfileID: "p_work", NodeID: "selected-node",
 		PeerIP: netip.MustParseAddr("100.64.0.20"),
 	}
-	if err := s.setExitNodePreferencesLocked([]tailmixprofile.Status{work.status, lab.status}); err != nil {
+	if err := s.setExitNodePreferencesLocked([]anyscaleprofile.Status{work.status, lab.status}); err != nil {
 		t.Fatal(err)
 	}
 	if len(work.changes) != 1 || work.changes[0] != netip.MustParseAddr("100.64.0.20") {
@@ -268,7 +268,7 @@ func TestExitNodePreferenceReconciliationSelectsOnlyOneProfile(t *testing.T) {
 }
 
 func TestRouteAllIsAlwaysEnabled(t *testing.T) {
-	work := &exitPreferenceEngine{status: tailmixprofile.Status{
+	work := &exitPreferenceEngine{status: anyscaleprofile.Status{
 		ProfileID: "p_work", BackendState: "Running",
 	}}
 	s := &supervisor{

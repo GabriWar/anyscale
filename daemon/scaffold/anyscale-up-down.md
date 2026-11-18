@@ -1,18 +1,18 @@
-# `tailmix up` and `tailmix down`
+# `anyscale up` and `anyscale down`
 
 ## Goal
 
-Add daemon-wide pause and resume commands. `tailmix down` must disconnect every profile without changing per-profile desired enablement. `tailmix up` must restore exactly the profiles whose persisted configuration is enabled. The down state must survive daemon and host restarts until explicitly cleared by `tailmix up`.
+Add daemon-wide pause and resume commands. `anyscale down` must disconnect every profile without changing per-profile desired enablement. `anyscale up` must restore exactly the profiles whose persisted configuration is enabled. The down state must survive daemon and host restarts until explicitly cleared by `anyscale up`.
 
 ## CLI contract
 
-- Add root commands `tailmix down` and `tailmix up`.
+- Add root commands `anyscale down` and `anyscale up`.
 - Both commands are idempotent, accept no operands or options, and support the existing help spellings.
-- Successful human output is `tailmix is down.` or `tailmix is up.`.
+- Successful human output is `anyscale is down.` or `anyscale is up.`.
 - Add both commands to root help and shell completion.
-- `tailmix status` prints `STATE\tup|down` before the profile table; JSON status includes a top-level `state` field with the same value.
+- `anyscalectl status` prints `STATE\tup|down` before the profile table; JSON status includes a top-level `state` field with the same value.
 - While globally down, enabled profiles report runtime state `down`; explicitly disabled and removed profiles continue to report `disabled` and `removed`.
-- Delegated `tailmix tailscale`/`tailmix ts` commands fail before socket access with `tailmix is down; run "tailmix up" first`.
+- Delegated `anyscalectl tailscale`/`anyscalectl ts` commands fail before socket access with `anyscale is down; run "anyscale up" first`.
 
 ## State and daemon behavior
 
@@ -25,7 +25,7 @@ Add daemon-wide pause and resume commands. `tailmix down` must disconnect every 
 
 ## Mutation behavior while down
 
-Reject these requests with control-API code `daemon_down` and message `tailmix is down; run "tailmix up" first`:
+Reject these requests with control-API code `daemon_down` and message `anyscale is down; run "anyscale up" first`:
 
 - `profiles add`, `rename`, `set`, `enable`, `disable`, `restart`, and `remove`
 - `wireguard apply`

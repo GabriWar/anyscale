@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	tailmixversion "github.com/maisem/tailmix/version"
-	"github.com/maisem/tailmix/wireguardcfg"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 type recordingBackend struct {
@@ -108,7 +108,7 @@ func TestHandlerReturnsServerVersion(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", response.Code, response.Body.String())
 	}
-	var got tailmixversion.Meta
+	var got anyscaleversion.Meta
 	if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +357,7 @@ type daemonDownBackend struct {
 }
 
 func (b *daemonDownBackend) AddProfile(context.Context, AddProfileRequest) (Profile, error) {
-	return Profile{}, NewError("daemon_down", "tailmix is down")
+	return Profile{}, NewError("daemon_down", "anyscale is down")
 }
 
 func TestHandlerMapsConflictsToHTTPConflict(t *testing.T) {

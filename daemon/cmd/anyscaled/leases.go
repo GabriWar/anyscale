@@ -4,13 +4,13 @@ import (
 	"slices"
 	"time"
 
-	"github.com/maisem/tailmix/effectiveip"
-	tailmixprofile "github.com/maisem/tailmix/profile"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
 )
 
 // Reclamation happens only during an existing reconciliation. The tracker keeps
 // process-local monotonic timestamps, so restarting grants a fresh grace period.
-func (s *supervisor) refreshLeasesLocked(statuses []tailmixprofile.Status, now time.Time) error {
+func (s *supervisor) refreshLeasesLocked(statuses []anyscaleprofile.Status, now time.Time) error {
 	present := make(map[effectiveip.NodeKey]bool)
 	observable := make(map[string]bool)
 	for _, status := range statuses {
@@ -19,7 +19,7 @@ func (s *supervisor) refreshLeasesLocked(statuses []tailmixprofile.Status, now t
 			continue
 		}
 		observable[status.ProfileID] = true
-		for _, node := range leaseTargets([]tailmixprofile.Status{status}) {
+		for _, node := range leaseTargets([]anyscaleprofile.Status{status}) {
 			present[effectiveip.NodeKey(node)] = true
 		}
 	}

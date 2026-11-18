@@ -9,8 +9,8 @@ import (
 	"net/url"
 	"strconv"
 
-	tailmixversion "github.com/maisem/tailmix/version"
-	"github.com/maisem/tailmix/wireguardcfg"
+	anyscaleversion "github.com/gabriwar/anyscale/daemon/version"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
 )
 
 type Backend interface {
@@ -64,7 +64,7 @@ func Handler(backend Backend) http.Handler {
 		writeResult(w, nil, NewError("unsupported", "this daemon does not support automatic updates"))
 	}
 	mux.HandleFunc("GET /v1/version", func(w http.ResponseWriter, _ *http.Request) {
-		writeResult(w, tailmixversion.GetMeta(), nil)
+		writeResult(w, anyscaleversion.GetMeta(), nil)
 	})
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		result, err := backend.Status(r.Context())

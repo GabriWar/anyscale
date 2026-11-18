@@ -1,5 +1,5 @@
-/tailmix
-/tailmixd
+/anyscale
+/anyscaled
 /dist/
 *.test
 .DS_Store

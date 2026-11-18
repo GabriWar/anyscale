@@ -83,6 +83,6 @@ func TestConfigForServiceRoutesSharedPeerByExactFQDN(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, ok := dnsCfg.Routes[foreignSuffix]; ok {
-		t.Fatalf("shared peer unexpectedly made tailmix authoritative for %q", foreignSuffix)
+		t.Fatalf("shared peer unexpectedly made anyscale authoritative for %q", foreignSuffix)
 	}
 }

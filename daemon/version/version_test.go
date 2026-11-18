@@ -103,7 +103,7 @@ func TestMetaString(t *testing.T) {
 				GitCommit:        "0123456789abcdef",
 				TailscaleVersion: "v1.100.2",
 			},
-			want: "tailmix v0.1.7\n  commit: 0123456789abcdef\n  long version: v0.1.7-t012345678\n  tailscale: v1.100.2",
+			want: "anyscalectl v0.1.7\n  commit: 0123456789abcdef\n  long version: v0.1.7-t012345678\n  tailscale: v1.100.2",
 		},
 		{
 			name: "dirty",
@@ -114,7 +114,7 @@ func TestMetaString(t *testing.T) {
 				GitDirty:         true,
 				TailscaleVersion: "v1.100.2",
 			},
-			want: "tailmix v0.1.7\n  commit: 0123456789abcdef-dirty\n  long version: v0.1.7-t012345678-dirty\n  tailscale: v1.100.2",
+			want: "anyscalectl v0.1.7\n  commit: 0123456789abcdef-dirty\n  long version: v0.1.7-t012345678-dirty\n  tailscale: v1.100.2",
 		},
 		{
 			name: "no build info",
@@ -123,7 +123,7 @@ func TestMetaString(t *testing.T) {
 				Long:             "v0.1.0-dev.ERR-BuildInfo",
 				TailscaleVersion: "v1.100.2",
 			},
-			want: "tailmix v0.1.0-dev.ERR-BuildInfo\n  long version: v0.1.0-dev.ERR-BuildInfo\n  tailscale: v1.100.2",
+			want: "anyscalectl v0.1.0-dev.ERR-BuildInfo\n  long version: v0.1.0-dev.ERR-BuildInfo\n  tailscale: v1.100.2",
 		},
 	}
 	for _, test := range tests {
@@ -141,7 +141,7 @@ func TestMetaFormatNamesComponent(t *testing.T) {
 		Long:             "v0.1.7-t012345678",
 		TailscaleVersion: "v1.100.2",
 	}
-	if got, want := meta.Format("tailmixd"), "tailmixd v0.1.7\n  long version: v0.1.7-t012345678\n  tailscale: v1.100.2"; got != want {
+	if got, want := meta.Format("anyscaled"), "anyscaled v0.1.7\n  long version: v0.1.7-t012345678\n  tailscale: v1.100.2"; got != want {
 		t.Fatalf("Meta.Format() = %q, want %q", got, want)
 	}
 }

@@ -16,7 +16,7 @@ import (
 // that we leak ourselves. It reruns itself to leak one, since the
 // report only comes at exit.
 func TestLeakedLayoutReported(t *testing.T) {
-	if os.Getenv("TRAYSCALE_LEAK_LAYOUT") == "1" {
+	if os.Getenv("ANYSCALE_LEAK_LAYOUT") == "1" {
 		gtk.InitCheck()
 		leakLayout()
 		return
@@ -26,7 +26,7 @@ func TestLeakedLayoutReported(t *testing.T) {
 	}
 
 	cmd := exec.Command(os.Args[0], "-test.run=^TestLeakedLayoutReported$")
-	cmd.Env = append(os.Environ(), "TRAYSCALE_LEAK_LAYOUT=1")
+	cmd.Env = append(os.Environ(), "ANYSCALE_LEAK_LAYOUT=1")
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatalf("leaked layout not reported:\n%s", out)

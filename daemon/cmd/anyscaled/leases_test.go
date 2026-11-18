@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/effectiveip"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/profilesocket"
-	"github.com/maisem/tailmix/state"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/profilesocket"
+	"github.com/gabriwar/anyscale/daemon/state"
 )
 
 func retentionTestLease() state.EffectiveLease {
@@ -26,8 +26,8 @@ func retentionTestLease() state.EffectiveLease {
 	}
 }
 
-func retentionTestStatus() tailmixprofile.Status {
-	return tailmixprofile.Status{
+func retentionTestStatus() anyscaleprofile.Status {
+	return anyscaleprofile.Status{
 		ProfileID: "work", BackendState: "Running", SelfNodeID: "self",
 		SelfIPs: []netip.Addr{netip.MustParseAddr("100.64.0.1")}, RouteAll: true,
 	}
@@ -44,7 +44,7 @@ func TestEffectiveLeaseFullPoolReclaimsAfterOneHour(t *testing.T) {
 	st.Leases[1].CanonicalIP = netip.MustParseAddr("100.64.0.3")
 	st.Leases[1].EffectiveIP = netip.MustParseAddr("100.127.0.0")
 	status := retentionTestStatus()
-	status.Peers = []tailmixprofile.PeerStatus{{
+	status.Peers = []anyscaleprofile.PeerStatus{{
 		NodeID: "new", TailscaleIPs: []netip.Addr{netip.MustParseAddr("100.64.0.9")},
 	}}
 	s := newLifecycleTestSupervisor(t, st)
@@ -55,13 +55,13 @@ func TestEffectiveLeaseFullPoolReclaimsAfterOneHour(t *testing.T) {
 	// A failed allocation still starts the in-memory absence clock. No
 	// periodic work or persisted activity timestamps are needed to recover.
 	base := time.Now()
-	if err := s.refreshLeasesLocked([]tailmixprofile.Status{status}, base.Add(59*time.Minute)); err != nil {
+	if err := s.refreshLeasesLocked([]anyscaleprofile.Status{status}, base.Add(59*time.Minute)); err != nil {
 		t.Fatal(err)
 	}
 	if len(s.st.Leases) != 2 {
 		t.Fatal("departed leases expired early")
 	}
-	if err := s.refreshLeasesLocked([]tailmixprofile.Status{status}, base.Add(time.Hour)); err != nil {
+	if err := s.refreshLeasesLocked([]anyscaleprofile.Status{status}, base.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.reconcileLocked(); err != nil {
@@ -77,7 +77,7 @@ func TestEffectiveLeaseRestartGrantsFreshHour(t *testing.T) {
 	st.Leases = []state.EffectiveLease{retentionTestLease()}
 	s := newLifecycleTestSupervisor(t, st)
 	s.runtimes["work"] = &managedProfile{statusFresh: true}
-	status := []tailmixprofile.Status{retentionTestStatus()}
+	status := []anyscaleprofile.Status{retentionTestStatus()}
 	base := time.Now()
 	if err := s.refreshLeasesLocked(status, base); err != nil {
 		t.Fatal(err)
@@ -104,8 +104,8 @@ func TestEffectiveLeaseRestartGrantsFreshHour(t *testing.T) {
 
 type retentionStatusErrorEngine struct{ lifecycleEngine }
 
-func (*retentionStatusErrorEngine) Status(context.Context) (tailmixprofile.Status, error) {
-	return tailmixprofile.Status{}, errors.New("status unavailable")
+func (*retentionStatusErrorEngine) Status(context.Context) (anyscaleprofile.Status, error) {
+	return anyscaleprofile.Status{}, errors.New("status unavailable")
 }
 
 func TestEffectiveLeaseUnavailableStatusDoesNotExpire(t *testing.T) {
@@ -118,7 +118,7 @@ func TestEffectiveLeaseUnavailableStatusDoesNotExpire(t *testing.T) {
 		status:  retentionTestStatus(), statusFresh: true,
 	}
 	base := time.Now()
-	if err := s.refreshLeasesLocked([]tailmixprofile.Status{retentionTestStatus()}, base); err != nil {
+	if err := s.refreshLeasesLocked([]anyscaleprofile.Status{retentionTestStatus()}, base); err != nil {
 		t.Fatal(err)
 	}
 	statuses := usableStatuses(s.statusesLocked())
@@ -128,7 +128,7 @@ func TestEffectiveLeaseUnavailableStatusDoesNotExpire(t *testing.T) {
 	if len(s.st.Leases) != 1 {
 		t.Fatal("failed status read expired lease using cached netmap")
 	}
-	for _, statuses := range [][]tailmixprofile.Status{nil, {{ProfileID: "work", BackendState: "Running"}}} {
+	for _, statuses := range [][]anyscaleprofile.Status{nil, {{ProfileID: "work", BackendState: "Running"}}} {
 		if err := s.refreshLeasesLocked(statuses, base.Add(3*time.Hour)); err != nil {
 			t.Fatal(err)
 		}
@@ -143,7 +143,7 @@ func TestEffectiveLeaseFailedSaveDoesNotPublishReclamation(t *testing.T) {
 	st.Leases = []state.EffectiveLease{retentionTestLease()}
 	s := newLifecycleTestSupervisor(t, st)
 	s.runtimes["work"] = &managedProfile{statusFresh: true}
-	statuses := []tailmixprofile.Status{retentionTestStatus()}
+	statuses := []anyscaleprofile.Status{retentionTestStatus()}
 	base := time.Now()
 	if err := s.refreshLeasesLocked(statuses, base); err != nil {
 		t.Fatal(err)
@@ -176,7 +176,7 @@ func TestSupervisorStartsControlWithExhaustedPool(t *testing.T) {
 		Mode: "socks", SOCKSAddr: "127.0.0.1:0", SocketDir: dir, Stderr: io.Discard,
 	})
 	status := retentionTestStatus()
-	status.Peers = []tailmixprofile.PeerStatus{{
+	status.Peers = []anyscaleprofile.PeerStatus{{
 		NodeID: "new", TailscaleIPs: []netip.Addr{netip.MustParseAddr("100.64.0.9")},
 	}}
 	s.runtimes["work"] = &managedProfile{

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/maisem/tailmix/tsnet"
+	"github.com/gabriwar/anyscale/daemon/tsnet"
 	"github.com/tailscale/wireguard-go/tun"
 
 	"golang.org/x/net/dns/dnsmessage"

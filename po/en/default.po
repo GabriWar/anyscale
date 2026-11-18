@@ -1,9 +1,9 @@
-# Trayscale English (source) catalog.
+# Anyscale English (source) catalog.
 # This file is the template translators copy when adding a language.
 msgid ""
 msgstr ""
-"Project-Id-Version: trayscale\n"
-"Report-Msgid-Bugs-To: https://github.com/DeedleFake/trayscale/issues\n"
+"Project-Id-Version: anyscale\n"
+"Report-Msgid-Bugs-To: https://github.com/GabriWar/anyscale/issues\n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -301,8 +301,8 @@ msgstr "This machine: %v"
 msgid "Toggle exit node"
 msgstr "Toggle exit node"
 
-msgid "Trayscale"
-msgstr "Trayscale"
+msgid "Anyscale"
+msgstr "Anyscale"
 
 msgid "UDP"
 msgstr "UDP"

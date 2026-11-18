@@ -1,12 +1,13 @@
 Anyscale
 ========
 
-Anyscale connects one Linux machine to several Tailscale and Headscale tailnets at the same time, with a GTK window and a tray icon to manage them.
+Anyscale connects one Linux machine to several Tailscale and Headscale tailnets at the same time.
 
-It is two things merged together:
+It has three parts:
 
-* a GUI forked from [Trayscale](https://github.com/DeedleFake/trayscale) by DeedleFake, and
-* a daemon, `anyscaled`, forked from [tailmix](https://github.com/maisem/tailmix) by Maisem Ali, which runs one Tailscale node per tailnet behind a single TUN device and maps every peer to its own local address so tailnets with overlapping `100.x` addresses don't collide.
+* `anyscaled`, the daemon. It runs one Tailscale node per tailnet behind a single TUN device, `anyscale0`, and gives every peer its own local address, so tailnets with overlapping `100.x` addresses don't collide.
+* `anyscale`, a GTK app with a tray icon to manage the tailnets.
+* `anyscalectl`, a command-line client for the daemon.
 
 Features
 --------
@@ -15,20 +16,10 @@ Features
 * Add tailnets on Tailscale or on any Headscale server (enter its URL as the login server); the browser opens to log in.
 * Remove a tailnet (keeps its identity so it can be restored) or delete it permanently, from a trash button or by right-clicking it.
 * A peer list that shows each peer's IP, OS, live upload and download rates, or when it was last seen.
-* One exit node across all tailnets, chosen through the daemon.
+* Peer details, advertised routes and network checks for each tailnet.
+* One exit node across all tailnets.
 * A tray icon with a checkbox per tailnet.
-* Everything else from Trayscale, per tailnet: peer details, advertised routes, network checks and so on.
-
-Differences from upstream tailmix
----------------------------------
-
-`daemon/` is tailmix v0.1.20, imported unmodified in its own commit, with these changes on top:
-
-* The daemon is called `anyscaled`.
-* `-operator-group` lets members of a group add, remove and change tailnets without root. A tailnet that such a user adds makes them its Tailscale operator, so they can log in and connect without root too. The shipped systemd unit uses `wheel`.
-* Automatic self-updates are off by default, as Anyscale pins the tailmix version.
-
-Without the operator group, the GUI falls back to asking for permission with polkit.
+* Members of an operator group (`wheel` in the shipped systemd unit) can add, remove and change tailnets without root. Everyone else gets a polkit prompt.
 
 Install
 -------
@@ -45,16 +36,22 @@ anyscale
 
 `anyscaled` conflicts with `tailscaled`, as both manage routes and DNS, so starting it stops `tailscaled`. To go back, run `sudo systemctl disable --now anyscaled` and start `tailscaled` again.
 
+If a firewall such as ufw drops incoming traffic, allow the tailnet interface, as tailscaled does for `tailscale0`:
+
+```sh
+sudo ufw allow in on anyscale0
+```
+
 ### Moving an existing tailscaled node over
 
 To keep a node's identity rather than log in again, add a disabled tailnet with the node's hostname, copy tailscaled's state into it, then enable it:
 
 ```sh
-tailmix profiles add work --hostname myhost --disabled
-tailmix profiles show work --json   # note its stateDir
+anyscalectl profiles add work --hostname myhost --disabled
+anyscalectl profiles show work --json   # note its stateDir
 sudo systemctl stop tailscaled
 sudo install -m600 /var/lib/tailscale/tailscaled.state <stateDir>/tailscaled.state
-tailmix profiles enable work
+anyscalectl profiles enable work
 ```
 
 Don't run both daemons with the same state at once.
@@ -63,10 +60,16 @@ Known issues
 ------------
 
 * The daemon doesn't include Taildrop, so sending files doesn't work yet.
-* Peers show their normal Tailscale addresses, but this machine reaches them through tailmix's local addresses. Use MagicDNS names.
-* The tailmix daemon decides which routes and DNS to use, so the "accept routes" and "accept DNS" switches are hidden.
+* Peers show their normal Tailscale addresses, but this machine reaches them through Anyscale's local addresses. Use MagicDNS names.
+* The daemon decides which routes and DNS to use, so the "accept routes" and "accept DNS" switches are hidden.
+* Serve can't be reached from this machine itself, only from other devices.
+
+Credits
+-------
+
+Anyscale's app is based on [Trayscale](https://github.com/DeedleFake/trayscale) by DeedleFake, and its daemon and CLI on [tailmix](https://github.com/maisem/tailmix) by Maisem Ali (`daemon/UPSTREAM` records the version).
 
 License
 -------
 
-The GUI is MIT-licensed, like Trayscale (see `LICENSE`). The daemon is BSD-3-Clause, like tailmix (see `daemon/LICENSE`).
+The app is MIT-licensed (see `LICENSE`) and the daemon BSD-3-Clause (see `daemon/LICENSE`).

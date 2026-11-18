@@ -10,12 +10,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/effectiveip"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/state"
-	"github.com/maisem/tailmix/wireguardcfg"
-	"github.com/maisem/tailmix/wireguardfilter"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/effectiveip"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/state"
+	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
+	"github.com/gabriwar/anyscale/daemon/wireguardfilter"
 )
 
 func wireGuardApplyDegradedMessage(err error) string {
@@ -112,10 +112,10 @@ func (s *supervisor) ApplyWireGuard(_ context.Context, requested wireguardcfg.Co
 		return controlapi.WireGuardProfile{}, controlapi.NewError("invalid_state", "%v", err)
 	}
 
-	var engineApply *tailmixprofile.WireGuardApply
+	var engineApply *anyscaleprofile.WireGuardApply
 	if wasRunning {
 		managed := s.runtimes[configured.ID]
-		engine, ok := managed.runtime.Engine.(*tailmixprofile.WireGuardEngine)
+		engine, ok := managed.runtime.Engine.(*anyscaleprofile.WireGuardEngine)
 		if !ok {
 			return controlapi.WireGuardProfile{}, controlapi.NewError("invalid_state", "WireGuard profile has an incompatible engine")
 		}
@@ -146,14 +146,14 @@ func (s *supervisor) ApplyWireGuard(_ context.Context, requested wireguardcfg.Co
 	}
 
 	start := !configured.Disabled && !wasRunning
-	var startedEngine *tailmixprofile.WireGuardEngine
+	var startedEngine *anyscaleprofile.WireGuardEngine
 	if start {
 		if err := s.startProfileLockedWithWireGuardTransition(*configured, "", "", true); err != nil {
 			s.lastErrors[configured.ID] = wireGuardApplyDegradedMessage(err)
 			return controlapi.WireGuardProfile{}, controlapi.NewError("apply_failed", "start WireGuard profile: %v", err)
 		}
 		managed := s.runtimes[configured.ID]
-		engine, ok := managed.runtime.Engine.(*tailmixprofile.WireGuardEngine)
+		engine, ok := managed.runtime.Engine.(*anyscaleprofile.WireGuardEngine)
 		if !ok {
 			return controlapi.WireGuardProfile{}, controlapi.NewError("invalid_state", "WireGuard profile has an incompatible engine")
 		}
@@ -221,9 +221,9 @@ func (s *supervisor) SetWireGuardShieldsUp(_ context.Context, name string, enabl
 		exitIP = s.st.ExitNode.PeerIP
 	}
 	managed := s.runtimes[configured.ID]
-	var update *tailmixprofile.WireGuardShieldsUpdate
+	var update *anyscaleprofile.WireGuardShieldsUpdate
 	if managed != nil {
-		engine, ok := managed.runtime.Engine.(*tailmixprofile.WireGuardEngine)
+		engine, ok := managed.runtime.Engine.(*anyscaleprofile.WireGuardEngine)
 		if !ok {
 			return controlapi.WireGuardProfile{}, controlapi.NewError("invalid_state", "WireGuard profile has an incompatible engine")
 		}
@@ -290,7 +290,7 @@ func (s *supervisor) wireGuardProfileLocked(configured state.Profile) (controlap
 			Reason:     resolution.Reason,
 		})
 	}
-	status := tailmixprofile.Status{}
+	status := anyscaleprofile.Status{}
 	if managed := s.runtimes[configured.ID]; managed != nil {
 		var err error
 		status, err = managed.runtime.Engine.Status(s.ctx)
@@ -304,7 +304,7 @@ func (s *supervisor) wireGuardProfileLocked(configured state.Profile) (controlap
 			result.PublicKey = public.String()
 		}
 	}
-	statusByName := make(map[string]tailmixprofile.PeerStatus, len(status.Peers))
+	statusByName := make(map[string]anyscaleprofile.PeerStatus, len(status.Peers))
 	for _, peer := range status.Peers {
 		statusByName[peer.NodeID] = peer
 	}

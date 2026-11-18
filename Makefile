@@ -10,19 +10,19 @@ ID := io.github.gabriwar.Anyscale
 
 all: build
 
-# anyscale is the GUI, anyscaled the daemon (forked from tailmix in
-# daemon/), and tailmix the daemon's CLI.
+# anyscale is the GUI, anyscaled the daemon (forked from anyscale in
+# daemon/), and anyscale the daemon's CLI.
 build:
 	$(GO) build -trimpath -ldflags="-s -w -X 'github.com/gabriwar/anyscale/internal/metadata.version=$(VERSION)'" -o anyscale ./cmd/anyscale
 	cd daemon && $(GO) build -trimpath -o ../anyscaled ./cmd/anyscaled
-	cd daemon && $(GO) build -trimpath -o ../tailmix ./cmd/tailmix
+	cd daemon && $(GO) build -trimpath -o ../anyscalectl ./cmd/anyscalectl
 
 test:
 	$(GO) test ./...
 	cd daemon && $(GO) test ./cmd/anyscaled/ ./controlapi/
 
 install: build
-	install -Dm755 -t $(DESTDIR)$(BINDIR) anyscale anyscaled tailmix
+	install -Dm755 -t $(DESTDIR)$(BINDIR) anyscale anyscaled anyscalectl
 	install -Dm644 data/$(ID).png $(DESTDIR)$(DATADIR)/icons/hicolor/256x256/apps/$(ID).png
 	install -Dm644 -t $(DESTDIR)$(DATADIR)/applications data/$(ID).desktop
 	install -Dm644 -t $(DESTDIR)$(DATADIR)/metainfo data/$(ID).metainfo.xml
@@ -33,10 +33,10 @@ install: build
 	sed 's#@BINDIR@#$(BINDIR)#g' dist/$(ID).policy.in > $(DESTDIR)/usr/share/polkit-1/actions/$(ID).policy
 
 uninstall:
-	rm -f $(DESTDIR)$(BINDIR)/anyscale $(DESTDIR)$(BINDIR)/anyscaled $(DESTDIR)$(BINDIR)/tailmix
+	rm -f $(DESTDIR)$(BINDIR)/anyscale $(DESTDIR)$(BINDIR)/anyscaled $(DESTDIR)$(BINDIR)/anyscalectl
 	rm -f $(DESTDIR)$(DATADIR)/icons/hicolor/256x256/apps/$(ID).png $(DESTDIR)$(DATADIR)/applications/$(ID).desktop
 	rm -f $(DESTDIR)$(DATADIR)/metainfo/$(ID).metainfo.xml $(DESTDIR)$(DATADIR)/glib-2.0/schemas/$(ID).gschema.xml
 	rm -f $(DESTDIR)/etc/systemd/system/anyscaled.service $(DESTDIR)/usr/share/polkit-1/actions/$(ID).policy
 
 clean:
-	rm -f anyscale anyscaled tailmix
+	rm -f anyscale anyscaled anyscalectl

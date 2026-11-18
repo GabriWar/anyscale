@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/maisem/tailmix/controlapi"
-	"github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/state"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	"github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/state"
 	"tailscale.com/net/tsaddr"
 	"tailscale.com/types/dnstype"
 	"tailscale.com/util/dnsname"

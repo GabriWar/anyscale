@@ -22,7 +22,7 @@ import (
 // there's no connection, as it does when tailscaled is down.
 const noTailnetSocket = "/dev/null/anyscale-no-tailnet"
 
-// mixInterval is how often the tailmix daemon is asked for the state of
+// mixInterval is how often the anyscale daemon is asked for the state of
 // every tailnet.
 const mixInterval = 2 * time.Second
 
@@ -57,7 +57,7 @@ func (a *App) startPoller(path string) {
 	go p.Run(ctx)
 }
 
-// watchMix gets the state of every tailnet from tailmix at regular
+// watchMix gets the state of every tailnet from anyscale at regular
 // intervals and whenever refreshMix is called.
 func (a *App) watchMix(ctx context.Context) {
 	tick := time.NewTicker(mixInterval)
@@ -74,7 +74,7 @@ func (a *App) watchMix(ctx context.Context) {
 		if msg := errString(err); msg != lastErr {
 			lastErr = msg
 			if err != nil {
-				slog.Error("get tailmix status", "err", err)
+				slog.Error("get anyscalectl status", "err", err)
 			}
 		}
 		gutil.IdleAdd(func() { a.updateMix(st, err) })
@@ -221,7 +221,7 @@ func (a *App) runHelper(f func(context.Context) error, done func(error)) {
 
 		err := f(ctx)
 		if err != nil {
-			slog.Error("privileged tailmix operation", "err", err)
+			slog.Error("privileged anyscale operation", "err", err)
 		}
 		gutil.IdleAdd(func() {
 			a.refreshMix()
@@ -353,7 +353,7 @@ func (a *App) showAddTailnet() {
 }
 
 // validTailnetName reports whether name can name a new tailnet.
-// tailmix has the final say.
+// anyscale has the final say.
 func validTailnetName(name string) bool {
 	name = strings.TrimSpace(name)
 	return name != "" && !strings.ContainsAny(name, "/ \t\n")
@@ -451,7 +451,7 @@ func (a *App) showRemoveTailnetFor(t mix.Tailnet) {
 }
 
 // setExitNode uses peer, from the selected tailnet, as the exit node,
-// or stops using one if peer is empty. tailmix allows only one exit
+// or stops using one if peer is empty. anyscale allows only one exit
 // node across all tailnets, so this replaces any other. done, if it's
 // not nil, is called on the main thread with the result.
 func (a *App) setExitNode(peer tailcfg.StableNodeID, done func(error)) {
@@ -510,7 +510,7 @@ func (a *App) useExitNodeWith(use bool, sel tsutil.ExitNodeSelection, done func(
 	}()
 }
 
-// exitNodeActive reports whether tailmix is routing through an exit
+// exitNodeActive reports whether anyscale is routing through an exit
 // node of any tailnet.
 func (a *App) exitNodeActive() bool {
 	return a.mixStatus.ExitNodes.Selected != nil

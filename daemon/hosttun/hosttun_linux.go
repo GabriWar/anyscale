@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	tailmixExitRouteTable = 527
-	tailmixExitRulePref   = 5300
+	anyscaleExitRouteTable = 527
+	anyscaleExitRulePref   = 5300
 
 	// Linux normalizes an unspecified IPv6 route priority to 1024.
 	// Use that priority explicitly so writes and ownership checks agree.
@@ -67,7 +67,7 @@ type linuxHost struct {
 
 func Open(cfg OpenConfig) (Host, error) {
 	if cfg.Name == "" {
-		cfg.Name = "tailmix0"
+		cfg.Name = "anyscale0"
 	}
 	if cfg.Logf == nil {
 		cfg.Logf = func(string, ...any) {}
@@ -150,7 +150,7 @@ func (h *linuxHost) Configure(cfg Config) error {
 	if err := h.reconcileRouteTable("main", 0, installed.mainRoutes, mainRoutes); err != nil {
 		return err
 	}
-	if err := h.reconcileRouteTable(fmt.Sprintf("table %d", tailmixExitRouteTable), tailmixExitRouteTable, installed.tableRoutes, tableRoutes); err != nil {
+	if err := h.reconcileRouteTable(fmt.Sprintf("table %d", anyscaleExitRouteTable), anyscaleExitRouteTable, installed.tableRoutes, tableRoutes); err != nil {
 		return err
 	}
 	if err := h.addMissingRules(installed.rules, routes); err != nil {
@@ -219,10 +219,10 @@ func (h *linuxHost) readInstalledState(wantRoutes []Route) (linuxInstalledState,
 
 		tableRoutes, err := netlink.RouteListFiltered(family, &netlink.Route{
 			LinkIndex: h.link.Attrs().Index,
-			Table:     tailmixExitRouteTable,
+			Table:     anyscaleExitRouteTable,
 		}, netlink.RT_FILTER_OIF|netlink.RT_FILTER_TABLE)
 		if err != nil {
-			return linuxInstalledState{}, fmt.Errorf("list Linux TUN %s routes in table %d: %w", h.name, tailmixExitRouteTable, err)
+			return linuxInstalledState{}, fmt.Errorf("list Linux TUN %s routes in table %d: %w", h.name, anyscaleExitRouteTable, err)
 		}
 		state.tableRoutes = appendLinuxRoutes(state.tableRoutes, tableRoutes, family, wantByDestination, localPrefixes)
 
@@ -231,7 +231,7 @@ func (h *linuxHost) readInstalledState(wantRoutes []Route) (linuxInstalledState,
 			return linuxInstalledState{}, fmt.Errorf("list Linux policy rules for family %d: %w", family, err)
 		}
 		for _, rule := range rules {
-			if rule.Priority == tailmixExitRulePref {
+			if rule.Priority == anyscaleExitRulePref {
 				if rule.Family == 0 {
 					rule.Family = family
 				}
@@ -410,7 +410,7 @@ func desiredLinuxRules(routes []Route) []netlink.Rule {
 	if !hasExitRoutes(routes) {
 		return nil
 	}
-	return []netlink.Rule{tailmixExitRule(unix.AF_INET), tailmixExitRule(unix.AF_INET6)}
+	return []netlink.Rule{anyscaleExitRule(unix.AF_INET), anyscaleExitRule(unix.AF_INET6)}
 }
 
 func containsLinuxRule(rules []netlink.Rule, want netlink.Rule) bool {
@@ -438,7 +438,7 @@ func verifyLinuxState(wantAddrs []netip.Prefix, wantRoutes []Route, got linuxIns
 	if err := verifyLinuxRouteTable("main table", mainRoutes, got.mainRoutes); err != nil {
 		errs = append(errs, err)
 	}
-	if err := verifyLinuxRouteTable(fmt.Sprintf("table %d", tailmixExitRouteTable), tableRoutes, got.tableRoutes); err != nil {
+	if err := verifyLinuxRouteTable(fmt.Sprintf("table %d", anyscaleExitRouteTable), tableRoutes, got.tableRoutes); err != nil {
 		errs = append(errs, err)
 	}
 	wantRules := desiredLinuxRules(wantRoutes)
@@ -498,7 +498,7 @@ func verifyLinuxRouteTable(name string, want []Route, got []linuxInstalledRoute)
 func (h *linuxHost) logOptionalRouteWarnings(routes []Route, state linuxInstalledState) {
 	mainRoutes, tableRoutes := desiredLinuxRoutes(routes)
 	h.logOptionalRouteTableWarnings("main table", mainRoutes, state.mainRoutes)
-	h.logOptionalRouteTableWarnings(fmt.Sprintf("table %d", tailmixExitRouteTable), tableRoutes, state.tableRoutes)
+	h.logOptionalRouteTableWarnings(fmt.Sprintf("table %d", anyscaleExitRouteTable), tableRoutes, state.tableRoutes)
 }
 
 func (h *linuxHost) logOptionalRouteTableWarnings(name string, want []Route, got []linuxInstalledRoute) {
@@ -565,7 +565,7 @@ func (h *linuxHost) Close() error {
 			}
 		}
 		for _, route := range slices.Backward(state.tableRoutes) {
-			if err := h.deleteRouteFromTable(route.Route, tailmixExitRouteTable); err != nil {
+			if err := h.deleteRouteFromTable(route.Route, anyscaleExitRouteTable); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -601,11 +601,11 @@ func hasExitRoutes(routes []Route) bool {
 	return false
 }
 
-func tailmixExitRule(family int) netlink.Rule {
+func anyscaleExitRule(family int) netlink.Rule {
 	rule := *netlink.NewRule()
 	rule.Family = family
-	rule.Priority = tailmixExitRulePref
-	rule.Table = tailmixExitRouteTable
+	rule.Priority = anyscaleExitRulePref
+	rule.Table = anyscaleExitRouteTable
 	rule.Mark = tsconst.LinuxBypassMarkNum
 	rule.Mask = tsconst.LinuxFwmarkMaskNum
 	rule.Invert = true

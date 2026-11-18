@@ -34,7 +34,7 @@ func serveFakePrefs(t *testing.T, url string) string {
 }
 
 // TestClientsUseTheirOwnSockets checks that two Clients reach two
-// different LocalAPIs, as two tailnets in tailmix do.
+// different LocalAPIs, as two tailnets in anyscale do.
 func TestClientsUseTheirOwnSockets(t *testing.T) {
 	work := NewClient(serveFakePrefs(t, "https://headscale.example.com"))
 	home := NewClient(serveFakePrefs(t, "https://controlplane.tailscale.com"))

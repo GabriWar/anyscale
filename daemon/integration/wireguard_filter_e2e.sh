@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Run a privileged, two-network-namespace end-to-end exercise of raw WireGuard
 # packet filters. The test builds the current checkout and leaves the host
-# unchanged unless TAILMIX_E2E_KEEP=1 is set for diagnosis.
+# unchanged unless ANYSCALE_E2E_KEEP=1 is set for diagnosis.
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-work_dir=$(mktemp -d "${TMPDIR:-/tmp}/tailmix-wireguard-e2e.XXXXXX")
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/anyscale-wireguard-e2e.XXXXXX")
 run_id=$$
 ns_a="tmwga${run_id}"
 ns_b="tmwgb${run_id}"
@@ -26,7 +26,7 @@ cleanup() {
 		fi
 		sudo ip netns del "$ns" 2>/dev/null || true
 	done
-	if [[ ${TAILMIX_E2E_KEEP:-0} == 1 ]]; then
+	if [[ ${ANYSCALE_E2E_KEEP:-0} == 1 ]]; then
 		printf 'diagnostics retained at %s\n' "$work_dir" >&2
 	else
 		sudo rm -rf "$work_dir"
@@ -58,8 +58,8 @@ sudo -n true 2>/dev/null || fail "passwordless sudo is required"
 mkdir -p "$work_dir/bin" "$work_dir/a/run" "$work_dir/b/run"
 (
 	cd "$repo_root"
-	go build -o "$work_dir/bin/tailmixd" ./cmd/tailmixd
-	go build -o "$work_dir/bin/tailmix" ./cmd/tailmix
+	go build -o "$work_dir/bin/anyscaled" ./cmd/anyscaled
+	go build -o "$work_dir/bin/anyscalectl" ./cmd/anyscalectl
 	go build -o "$work_dir/bin/integration-tool" ./cmd/integration-tool
 )
 
@@ -85,17 +85,17 @@ sudo ip -n "$ns_b" address add 192.0.2.2/30 dev underlay0
 sudo ip -n "$ns_a" link set underlay0 up
 sudo ip -n "$ns_b" link set underlay0 up
 
-sudo ip netns exec "$ns_a" "$work_dir/bin/tailmixd" \
+sudo ip netns exec "$ns_a" "$work_dir/bin/anyscaled" \
 	-auto-update=false \
 	-state "$work_dir/a/state.json" \
 	-socket-dir "$work_dir/a/run" \
-	-tun-name tailmix0 >"$work_dir/a-daemon.log" 2>&1 &
+	-tun-name anyscale0 >"$work_dir/a-daemon.log" 2>&1 &
 background_pids+=("$!")
-sudo ip netns exec "$ns_b" "$work_dir/bin/tailmixd" \
+sudo ip netns exec "$ns_b" "$work_dir/bin/anyscaled" \
 	-auto-update=false \
 	-state "$work_dir/b/state.json" \
 	-socket-dir "$work_dir/b/run" \
-	-tun-name tailmix0 >"$work_dir/b-daemon.log" 2>&1 &
+	-tun-name anyscale0 >"$work_dir/b-daemon.log" 2>&1 &
 background_pids+=("$!")
 
 wait_for_file() {
@@ -107,8 +107,8 @@ wait_for_file() {
 	return 1
 }
 
-wait_for_file "$work_dir/a/run/tailmixd.sock" || fail "first daemon did not create its control socket"
-wait_for_file "$work_dir/b/run/tailmixd.sock" || fail "second daemon did not create its control socket"
+wait_for_file "$work_dir/a/run/anyscaled.sock" || fail "first daemon did not create its control socket"
+wait_for_file "$work_dir/b/run/anyscaled.sock" || fail "second daemon did not create its control socket"
 
 write_manifest() {
 	local side=$1 permission=$2
@@ -160,16 +160,16 @@ YAML
 apply_profile() {
 	local side=$1 permission=$2
 	write_manifest "$side" "$permission"
-	sudo env TAILMIX_SOCKET_DIR="$work_dir/$side/run" \
-		"$work_dir/bin/tailmix" wireguard apply --file "$work_dir/$side.yaml" --json \
+	sudo env ANYSCALE_SOCKET_DIR="$work_dir/$side/run" \
+		"$work_dir/bin/anyscalectl" wireguard apply --file "$work_dir/$side.yaml" --json \
 		>"$work_dir/$side-profile.json"
 }
 
 set_shields() {
 	local side=$1 state=$2 profile
 	[[ $side == a ]] && profile=alpha || profile=beta
-	sudo env TAILMIX_SOCKET_DIR="$work_dir/$side/run" \
-		"$work_dir/bin/tailmix" wireguard shields-up "$profile" "$state" --json \
+	sudo env ANYSCALE_SOCKET_DIR="$work_dir/$side/run" \
+		"$work_dir/bin/anyscalectl" wireguard shields-up "$profile" "$state" --json \
 		>"$work_dir/$side-shields.json"
 }
 

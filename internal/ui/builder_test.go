@@ -29,7 +29,7 @@ func TestTemplates(t *testing.T) {
 	running := &tsutil.IPNStatus{State: ipn.Running, Prefs: ipn.NewPrefs().View()}
 
 	t.Run("MainWindow", func(t *testing.T) {
-		app := &App{app: adw.NewApplication("dev.deedles.Trayscale.test.templates", gio.GApplicationNonUniqueValue)}
+		app := &App{app: adw.NewApplication("io.github.gabriwar.Anyscale.test.templates", gio.GApplicationNonUniqueValue)}
 		defer app.app.Unref()
 		build(t, func() {
 			win := NewMainWindow(app)

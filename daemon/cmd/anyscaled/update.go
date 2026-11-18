@@ -9,13 +9,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maisem/tailmix/controlapi"
-	tailmixupdate "github.com/maisem/tailmix/update"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	anyscaleupdate "github.com/gabriwar/anyscale/daemon/update"
 )
 
 type binaryUpdater interface {
-	Check(context.Context, string) (tailmixupdate.Release, bool, error)
-	Apply(context.Context, string) (tailmixupdate.Release, string, bool, error)
+	Check(context.Context, string) (anyscaleupdate.Release, bool, error)
+	Apply(context.Context, string) (anyscaleupdate.Release, string, bool, error)
 	Rollback(string) error
 }
 
@@ -30,7 +30,7 @@ func (r *updateRestart) Error() string { return "restart into installed update" 
 var execProcess = syscall.Exec
 
 func (r *updateRestart) exec(argv, env []string) error {
-	path := filepath.Join(r.root, "current", "tailmixd")
+	path := filepath.Join(r.root, "current", "anyscaled")
 	args := append([]string{path}, argv[1:]...)
 	if err := execProcess(path, args, env); err == nil {
 		return nil

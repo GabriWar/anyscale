@@ -6,10 +6,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/maisem/tailmix/controlapi"
-	tailmixprofile "github.com/maisem/tailmix/profile"
-	"github.com/maisem/tailmix/routingpolicy"
-	"github.com/maisem/tailmix/state"
+	"github.com/gabriwar/anyscale/daemon/controlapi"
+	anyscaleprofile "github.com/gabriwar/anyscale/daemon/profile"
+	"github.com/gabriwar/anyscale/daemon/routingpolicy"
+	"github.com/gabriwar/anyscale/daemon/state"
 	"tailscale.com/util/dnsname"
 )
 
@@ -181,7 +181,7 @@ func validatePolicyPrefix(st state.State, prefix netip.Prefix) (netip.Prefix, er
 		return netip.Prefix{}, controlapi.NewError("invalid_prefix", "default route %v must use exit-node policy", prefix)
 	}
 	if routeOverlapsReserved(st, prefix) {
-		return netip.Prefix{}, controlapi.NewError("invalid_prefix", "route %v overlaps a tailmix reserved range", prefix)
+		return netip.Prefix{}, controlapi.NewError("invalid_prefix", "route %v overlaps a anyscale reserved range", prefix)
 	}
 	return prefix, nil
 }
@@ -216,7 +216,7 @@ func (s *supervisor) SetExitNode(_ context.Context, request controlapi.SetExitNo
 		return controlapi.ExitNodes{}, controlapi.NewError("profile_disabled", "profile %q is disabled", request.ProfileName)
 	}
 	statuses := s.statusesLocked()
-	var selectedStatus *tailmixprofile.Status
+	var selectedStatus *anyscaleprofile.Status
 	for i := range statuses {
 		if statuses[i].ProfileID == configured.ID {
 			selectedStatus = &statuses[i]
@@ -259,7 +259,7 @@ func (s *supervisor) ClearExitNode(_ context.Context) (controlapi.ExitNodes, err
 	return s.exitNodesLocked(s.statusesLocked()), nil
 }
 
-func (s *supervisor) exitNodesLocked(statuses []tailmixprofile.Status) controlapi.ExitNodes {
+func (s *supervisor) exitNodesLocked(statuses []anyscaleprofile.Status) controlapi.ExitNodes {
 	result := controlapi.ExitNodes{ReconcileError: s.reconcileErr}
 	for _, status := range statuses {
 		profileName := profileNameByID(s.st, status.ProfileID)
@@ -340,7 +340,7 @@ func (s *supervisor) exitNodesLocked(statuses []tailmixprofile.Status) controlap
 	return result
 }
 
-func exitNodeLocation(location *tailmixprofile.PeerLocation) *controlapi.ExitNodeLocation {
+func exitNodeLocation(location *anyscaleprofile.PeerLocation) *controlapi.ExitNodeLocation {
 	if location == nil {
 		return nil
 	}
@@ -353,14 +353,14 @@ func exitNodeLocation(location *tailmixprofile.PeerLocation) *controlapi.ExitNod
 	}
 }
 
-func selectExitNodePeer(status tailmixprofile.Status, selector string) (tailmixprofile.PeerStatus, error) {
+func selectExitNodePeer(status anyscaleprofile.Status, selector string) (anyscaleprofile.PeerStatus, error) {
 	selector = strings.TrimSpace(selector)
 	if selector == "" {
-		return tailmixprofile.PeerStatus{}, controlapi.NewError("invalid_request", "exit node peer selector is empty")
+		return anyscaleprofile.PeerStatus{}, controlapi.NewError("invalid_request", "exit node peer selector is empty")
 	}
 	selectorName := strings.ToLower(strings.TrimSuffix(selector, "."))
 	selectorIP, _ := netip.ParseAddr(selector)
-	matches := map[string]tailmixprofile.PeerStatus{}
+	matches := map[string]anyscaleprofile.PeerStatus{}
 	for _, peer := range status.Peers {
 		if !peer.ExitNodeOption {
 			continue
@@ -379,11 +379,11 @@ func selectExitNodePeer(status tailmixprofile.Status, selector string) (tailmixp
 		}
 	}
 	if len(matches) == 0 {
-		return tailmixprofile.PeerStatus{}, controlapi.NewError(
+		return anyscaleprofile.PeerStatus{}, controlapi.NewError(
 			"exit_node_not_found", "exit node %q is not available in profile %q", selector, status.Alias)
 	}
 	if len(matches) > 1 {
-		return tailmixprofile.PeerStatus{}, controlapi.NewError(
+		return anyscaleprofile.PeerStatus{}, controlapi.NewError(
 			"exit_node_ambiguous", "exit node selector %q is ambiguous in profile %q", selector, status.Alias)
 	}
 	for _, peer := range matches {

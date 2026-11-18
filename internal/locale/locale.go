@@ -1,4 +1,4 @@
-// Package locale provides gettext-style string translation for Trayscale
+// Package locale provides gettext-style string translation for Anyscale
 // using [github.com/leonelquinteros/gotext] for Go-constructed strings and
 // libintl/GtkBuilder gettext for .ui attributes marked translatable="yes".
 //

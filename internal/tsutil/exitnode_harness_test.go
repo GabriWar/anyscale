@@ -10,7 +10,7 @@ import (
 )
 
 // These tests run against real tailscaled daemons from the
-// drive-trayscale skill's tsharness. Run them with
+// drive-anyscale skill's tsharness. Run them with
 // .agents/skills/verify-exit-node-selection/scripts/run-harness-tests,
 // which starts the daemons and runs only these tests, since they
 // repoint the shared LocalAPI client.

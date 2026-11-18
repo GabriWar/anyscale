@@ -1,4 +1,4 @@
-// Package version reports the tailmix and embedded Tailscale versions.
+// Package version reports the anyscale and embedded Tailscale versions.
 package version
 
 import (
@@ -22,7 +22,7 @@ var (
 	gitCommitStamp string
 )
 
-// Meta describes the versions embedded in the current tailmix binary.
+// Meta describes the versions embedded in the current anyscale binary.
 type Meta struct {
 	Short            string `json:"short"`
 	Long             string `json:"long"`
@@ -31,7 +31,7 @@ type Meta struct {
 	TailscaleVersion string `json:"tailscaleVersion"`
 }
 
-// GetMeta returns the versions embedded in the current tailmix binary.
+// GetMeta returns the versions embedded in the current anyscale binary.
 func GetMeta() Meta {
 	info, _ := debug.ReadBuildInfo()
 	return metaFromBuildInfo(info, tailscaleVersionFromBuildInfo(info), buildStamps{
@@ -137,9 +137,9 @@ func (meta Meta) Format(component string) string {
 	return report.String()
 }
 
-// String returns meta as a human-readable tailmix version report.
+// String returns meta as a human-readable anyscalectl version report.
 func (meta Meta) String() string {
-	return meta.Format("tailmix")
+	return meta.Format("anyscalectl")
 }
 
 // String returns the human-readable version report for the current binary.

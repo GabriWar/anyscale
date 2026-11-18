@@ -1,9 +1,9 @@
 # Localization
 
-Trayscale uses the same embedded GNU gettext catalogs under this directory for two runtimes:
+Anyscale uses the same embedded GNU gettext catalogs under this directory for two runtimes:
 
 - **Go strings** — [gotext](https://github.com/leonelquinteros/gotext) loads `po/<lang>/default.po` directly (`locale.Get` / `locale.GetN`).
-- **GtkBuilder `.ui` labels** — at startup a small pure-Go `.po`→`.mo` compiler materializes catalogs under `$XDG_CACHE_HOME/trayscale-locale/<lang>/LC_MESSAGES/trayscale.mo` (or `~/.cache/...`), then `bindtextdomain("trayscale", …)` so GTK translates attributes marked `translatable="yes"` via `dgettext`. No host `msgfmt` is required at build or run time.
+- **GtkBuilder `.ui` labels** — at startup a small pure-Go `.po`→`.mo` compiler materializes catalogs under `$XDG_CACHE_HOME/anyscale-locale/<lang>/LC_MESSAGES/anyscale.mo` (or `~/.cache/...`), then `bindtextdomain("anyscale", …)` so GTK translates attributes marked `translatable="yes"` via `dgettext`. No host `msgfmt` is required at build or run time.
 
 ## Layout
 
@@ -23,8 +23,8 @@ Language codes follow the usual gettext forms (`es`, `en_US`, …). At startup t
 1. Copy `po/en/default.po` to `po/<lang>/default.po` (for example `po/fr/default.po`).
 2. Set the `Language:` header to your language code.
 3. Fill in `msgstr` values. Leave a string as `msgstr ""` to fall back to English.
-4. Rebuild: `go build -o trayscale ./cmd/trayscale` (or `go test -vet=all ./...`).
-5. Run with your locale, for example `LANGUAGE=fr ./trayscale`.
+4. Rebuild: `go build -o anyscale ./cmd/anyscale` (or `go test -vet=all ./...`).
+5. Run with your locale, for example `LANGUAGE=fr ./anyscale`.
 
 Keep mnemonics in both msgid and msgstr when the UI uses them (for example `_Quit` → `終了(_Q)`), so GTK menus show the underlined accelerator.
 
@@ -40,7 +40,7 @@ Merge newly extracted msgids into each language file. Strings wrapped in Go look
 
 `LANGUAGE` is preferred for catalog selection. Bare `LANG=ja` (or any language without a *generated* system locale in `locale -a`) makes glibc/`setlocale` fail: you get `locale: Cannot set LC_* to default locale` warnings and GTK/GLib can hang on startup.
 
-At process start Trayscale calls `locale.SanitizeEnvironment()`: if `LANG`/`LC_*` are unsupported it copies the language into `LANGUAGE` (when unset) and sets `LC_ALL` to `C.UTF-8` / `C.utf8` so libc/GTK stay happy while gotext and libintl still load the right catalog via `LANGUAGE`.
+At process start Anyscale calls `locale.SanitizeEnvironment()`: if `LANG`/`LC_*` are unsupported it copies the language into `LANGUAGE` (when unset) and sets `LC_ALL` to `C.UTF-8` / `C.utf8` so libc/GTK stay happy while gotext and libintl still load the right catalog via `LANGUAGE`.
 
 Prefer `LANGUAGE=ja` (or install the system locale, e.g. `ja_JP.UTF-8`) when testing.
 
@@ -49,7 +49,7 @@ On hosts that only provide `C` / `C.UTF-8`, `BindGettext` clones `C.utf8` into t
 
 ## Networking terminology (es / pt / ja)
 
-Product brands stay English in every catalog: **Trayscale**, **Tailscale**, **Taildrop**, **Mullvad**.
+Product brands stay English in every catalog: **Anyscale**, **Tailscale**, **Taildrop**, **Mullvad**.
 
 Standard networking acronyms stay as the English acronym in UI labels (GNOME NetworkManager, OpenWrt LuCI, Microsoft networking docs, vendor Japanese manuals). Do not invent calques for short controls:
 
@@ -70,12 +70,12 @@ Loanwords / daemon:
 
 **Wrapped (Go):** tray menu labels, notifications/toasts, dialog headings and buttons constructed in Go, sidebar section titles, and other `locale.Get` call sites under `internal/ui` and `internal/tray`.
 
-**Builder `.ui` files:** Static `title` / `subtitle` / `label` / `tooltip-text` / `description` (and menu `label` attributes in `menu.ui`) marked `translatable="yes"` use GtkBuilder gettext with domain `trayscale`.
+**Builder `.ui` files:** Static `title` / `subtitle` / `label` / `tooltip-text` / `description` (and menu `label` attributes in `menu.ui`) marked `translatable="yes"` use GtkBuilder gettext with domain `anyscale`.
 
-**Desktop launcher:** `dev.deedles.Trayscale.desktop` uses Desktop Entry locale keys (`Name[es]`, `Comment[ja]`, …) for es / pt / ja.
+**Desktop launcher:** `io.github.gabriwar.Anyscale.desktop` uses Desktop Entry locale keys (`Name[es]`, `Comment[ja]`, …) for es / pt / ja.
 
 **Not wrapped yet:**
 
-- GSettings schema summaries (`dev.deedles.Trayscale.gschema.xml`)
+- GSettings schema summaries (`io.github.gabriwar.Anyscale.gschema.xml`)
 - AppStream metadata (`.metainfo.xml`)
 - Proper nouns and dynamic Tailscale data (hostnames, IPs, region names from the control plane)

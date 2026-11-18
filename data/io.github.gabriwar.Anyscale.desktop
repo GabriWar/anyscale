@@ -6,7 +6,7 @@ Name=Anyscale
 GenericName=Multi-tailnet Tailscale Client
 Comment=Connect to several Tailscale and Headscale tailnets at once.
 Categories=System;GNOME;GTK;
-Keywords=tailscale;headscale;tailmix;vpn;
+Keywords=tailscale;headscale;anyscale;vpn;
 
 Icon=io.github.gabriwar.Anyscale
 Exec=anyscale %F
