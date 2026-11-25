@@ -28,6 +28,7 @@ import (
 	"github.com/gabriwar/anyscale/daemon/state"
 	"github.com/gabriwar/anyscale/daemon/tunmux"
 	"github.com/gabriwar/anyscale/daemon/wireguardcfg"
+	"tailscale.com/net/netmon"
 	"tailscale.com/types/dnstype"
 )
 
@@ -284,6 +285,9 @@ func (s *supervisor) startAggregateLocked() error {
 			return err
 		}
 		s.host = host
+		// Like tailscaled, register the TUN with netmon. Without it, Linux serve
+		// listeners fail TailscaleInterfaceIndex and, once canceled, spin forever.
+		netmon.SetTailscaleInterfaceProps(host.Name(), 0)
 		dnsService, err := anyscaledns.StartService(anyscaledns.ServiceConfig{
 			TunName:    host.Name(),
 			ResolverIP: s.st.DNSIP,
