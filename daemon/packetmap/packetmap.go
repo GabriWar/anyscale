@@ -12,6 +12,9 @@ import (
 type Destination struct {
 	ProfileID   string
 	CanonicalIP netip.Addr
+	// Alias marks a peer's own canonical address, routed because exactly one
+	// active profile has it. Replies to flows dialed this way keep it.
+	Alias bool
 }
 
 type SubnetRoute struct {
@@ -46,10 +49,19 @@ type Route struct {
 
 type Mapper struct {
 	table Table
+	flows *aliasFlows
 }
 
 func New(table Table) *Mapper {
-	return &Mapper{table: table}
+	return &Mapper{table: table, flows: newAliasFlows()}
+}
+
+// InheritFlows keeps prev's canonical alias flows, so replacing the mapper
+// does not change the reply address of open connections.
+func (m *Mapper) InheritFlows(prev *Mapper) {
+	if prev != nil {
+		m.flows = prev.flows
+	}
 }
 
 func (m *Mapper) Outbound(pkt []byte) ([]byte, Route, error) {
@@ -74,6 +86,9 @@ func (m *Mapper) Outbound(pkt []byte) ([]byte, Route, error) {
 	}
 	// SNAT the shared host address to the selected profile's canonical self
 	// address before the packet enters that profile's tsnet engine.
+	if dst.Alias {
+		m.flows.observe(outboundAliasKey(dst.ProfileID, &p), &p, true)
+	}
 	checksum.UpdateSrcAddr(&p, src.CanonicalIP)
 	if !preserve {
 		checksum.UpdateDstAddr(&p, dst.CanonicalIP)
@@ -101,7 +116,9 @@ func (m *Mapper) Inbound(profileID string, pkt []byte) ([]byte, error) {
 			if effectivePeer.Is6() != p.Src.Addr().Is6() || src.HostIP.Is6() != p.Dst.Addr().Is6() {
 				return nil, fmt.Errorf("address family mismatch for profile %q", profileID)
 			}
-			checksum.UpdateSrcAddr(&p, effectivePeer)
+			if !m.isAliasReply(profileID, &p) {
+				checksum.UpdateSrcAddr(&p, effectivePeer)
+			}
 			checksum.UpdateDstAddr(&p, src.HostIP)
 			return pkt, nil
 		}
@@ -117,6 +134,17 @@ func (m *Mapper) Inbound(profileID string, pkt []byte) ([]byte, error) {
 	// host owns on the shared TUN.
 	checksum.UpdateDstAddr(&p, src.HostIP)
 	return pkt, nil
+}
+
+func (m *Mapper) isAliasReply(profileID string, p *packet.Parsed) bool {
+	if m.table.Destinations == nil {
+		return false
+	}
+	alias, ok := m.table.Destinations.Lookup(p.Src.Addr())
+	if !ok || !alias.Alias || alias.ProfileID != profileID || alias.CanonicalIP != p.Src.Addr() {
+		return false
+	}
+	return m.flows.observe(inboundAliasKey(profileID, p), p, false)
 }
 
 func (m *Mapper) outboundDestination(ip netip.Addr) (Destination, bool, error) {

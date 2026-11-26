@@ -937,6 +937,8 @@ func tunConfigWithPolicy(st state.State, statuses []anyscaleprofile.Status, leas
 		InboundPeers:   map[string]*bart.Table[netip.Addr]{},
 	}
 	var hostCfg hosttun.Config
+	// Canonical target IPs by profile, to route the unambiguous ones too.
+	aliasCandidates := map[netip.Addr]map[string]bool{}
 	for _, ps := range statuses {
 		for _, canonical := range ps.SelfIPs {
 			sourceKey := packetmap.SourceKey{ProfileID: ps.ProfileID, IPv6: canonical.Is6()}
@@ -961,6 +963,10 @@ func tunConfigWithPolicy(st state.State, statuses []anyscaleprofile.Status, leas
 					return packetmap.Table{}, hosttun.Config{}, fmt.Errorf("effective destination %v maps to multiple targets", effective)
 				}
 				table.Destinations.Insert(effectivePrefix, packetmap.Destination{ProfileID: ps.ProfileID, CanonicalIP: canonical})
+				if aliasCandidates[canonical] == nil {
+					aliasCandidates[canonical] = map[string]bool{}
+				}
+				aliasCandidates[canonical][ps.ProfileID] = true
 				inbound := table.InboundPeers[ps.ProfileID]
 				if inbound == nil {
 					inbound = new(bart.Table[netip.Addr])
@@ -981,6 +987,35 @@ func tunConfigWithPolicy(st state.State, statuses []anyscaleprofile.Status, leas
 				})
 			}
 		}
+	}
+	// A canonical target IP that exactly one active profile has is also routed
+	// as itself, so names that resolve outside MagicDNS (public DNS records
+	// pointing at a tailnet IP) work as with a single tailnet. Addresses held
+	// by several profiles stay unrouted rather than picking one.
+	aliases := make([]netip.Addr, 0, len(aliasCandidates))
+	for canonical := range aliasCandidates {
+		aliases = append(aliases, canonical)
+	}
+	sort.Slice(aliases, func(i, j int) bool { return aliases[i].Less(aliases[j]) })
+	for _, canonical := range aliases {
+		profiles := aliasCandidates[canonical]
+		if len(profiles) != 1 || aliasOverlapsLocal(st, canonical) {
+			continue
+		}
+		prefix := netip.PrefixFrom(canonical, canonical.BitLen())
+		if _, taken := table.Destinations.Get(prefix); taken {
+			continue
+		}
+		var profileID string
+		for id := range profiles {
+			profileID = id
+		}
+		source := table.Sources[packetmap.SourceKey{ProfileID: profileID, IPv6: canonical.Is6()}]
+		table.Destinations.Insert(prefix, packetmap.Destination{ProfileID: profileID, CanonicalIP: canonical, Alias: true})
+		hostCfg.Routes = append(hostCfg.Routes, hosttun.Route{
+			Destination: prefix,
+			Source:      source.HostIP,
+		})
 	}
 	// Retained leases still need host routes so attempts to use a departed
 	// target reach the mux and refresh its grace period. They have no peer
@@ -1150,6 +1185,23 @@ func routeOverlapsReserved(st state.State, prefix netip.Prefix) bool {
 	}
 	for _, addr := range []netip.Addr{st.NATIP, st.NATIPv6, st.DNSIP, anyscaledns.ServiceIP()} {
 		if addr.IsValid() && prefix.Addr().Is6() == addr.Is6() && prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+// aliasOverlapsLocal reports whether a canonical IP collides with an address
+// anyscale assigns locally, which always wins.
+func aliasOverlapsLocal(st state.State, ip netip.Addr) bool {
+	for _, raw := range []string{st.SyntheticPool, st.SyntheticPoolV6} {
+		pool, err := netip.ParsePrefix(raw)
+		if err == nil && pool.Contains(ip) {
+			return true
+		}
+	}
+	for _, addr := range []netip.Addr{st.NATIP, st.NATIPv6, st.DNSIP, anyscaledns.ServiceIP()} {
+		if addr == ip {
 			return true
 		}
 	}

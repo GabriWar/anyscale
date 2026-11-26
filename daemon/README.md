@@ -113,8 +113,11 @@ Two tailnets can use the same `100.x` address. anyscale gives every node and
 Tailscale Service a stable local address from `100.127.0.0/16` (and
 `fd6d:6e65:7400::/56` for IPv6), and rewrites packets as they enter and leave
 each tailnet. MagicDNS names resolve to these local addresses, so connect by
-name. Inside each tailnet, your machine still uses its own Tailscale address,
-so ACLs work as usual.
+name. A node's own Tailscale address also works while only one active tailnet
+uses it, so public DNS records that point at a tailnet IP keep working; an
+address two tailnets share is reachable only through its local address.
+Inside each tailnet, your machine still uses its own Tailscale address, so
+ACLs work as usual.
 
 ## Everyday commands
 

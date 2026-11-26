@@ -719,12 +719,13 @@ func TestTUNPlanTracksPeerAddAndRemoveAcrossNetmapUpdates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if added.Table.Destinations.Size() != 2 || len(added.HostConfig.Routes) != 4 {
-		t.Fatalf("config after add = destinations %v routes %v, want peer plus MagicDNS routes", added.Table.Destinations, added.HostConfig.Routes)
+	// Two effective peer routes, two canonical alias routes, two MagicDNS routes.
+	if added.Table.Destinations.Size() != 4 || len(added.HostConfig.Routes) != 6 {
+		t.Fatalf("config after add = destinations %v routes %v, want peer, alias and MagicDNS routes", added.Table.Destinations, added.HostConfig.Routes)
 	}
 	effectiveByCanonical := map[netip.Addr]netip.Addr{}
 	for prefix, destination := range added.Table.Destinations.All() {
-		if destination.ProfileID == "home" {
+		if destination.ProfileID == "home" && !destination.Alias {
 			effectiveByCanonical[destination.CanonicalIP] = prefix.Addr()
 		}
 	}
@@ -899,4 +900,55 @@ func hasDNSRecord(records []anyscaledns.Record, name string, ip netip.Addr) bool
 		}
 	}
 	return false
+}
+
+func TestTUNPlanRoutesOnlyUnambiguousCanonicalAliases(t *testing.T) {
+	st := state.State{
+		SyntheticPool:   "10.250.0.0/16",
+		SyntheticPoolV6: "fd6d:6e65:7400::/120",
+		Profiles:        []state.Profile{{ID: "csi", Alias: "csi"}, {ID: "home", Alias: "home"}},
+	}
+	status := func(id string, self string, peers ...anyscaleprofile.PeerStatus) anyscaleprofile.Status {
+		return anyscaleprofile.Status{
+			ProfileID:      id,
+			MagicDNSSuffix: id + ".example",
+			SelfNodeID:     id + "-self",
+			SelfDNSName:    "anyscale." + id + ".example",
+			SelfIPs:        []netip.Addr{netip.MustParseAddr(self)},
+			Peers:          peers,
+		}
+	}
+	peer := func(id, ip string) anyscaleprofile.PeerStatus {
+		return anyscaleprofile.PeerStatus{NodeID: id, DNSName: id + ".example", TailscaleIPs: []netip.Addr{netip.MustParseAddr(ip)}}
+	}
+	plan, err := buildTUNPlan(st, []anyscaleprofile.Status{
+		status("csi", "100.64.0.7", peer("csi-server", "100.120.159.93"), peer("csi-shared", "100.64.0.2"), peer("csi-pooled", "10.250.0.99")),
+		status("home", "100.64.0.9", peer("home-shared", "100.64.0.2")),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliasFor := func(ip string) (packetmap.Destination, bool) {
+		addr := netip.MustParseAddr(ip)
+		dst, ok := plan.Table.Destinations.Get(netip.PrefixFrom(addr, 32))
+		return dst, ok && dst.Alias
+	}
+	hasRoute := func(ip string) bool {
+		want := netip.MustParsePrefix(ip + "/32")
+		for _, route := range plan.HostConfig.Routes {
+			if route.Destination == want {
+				return true
+			}
+		}
+		return false
+	}
+	if dst, ok := aliasFor("100.120.159.93"); !ok || dst.ProfileID != "csi" || dst.CanonicalIP != netip.MustParseAddr("100.120.159.93") || !hasRoute("100.120.159.93") {
+		t.Fatalf("unique canonical alias = %+v %v route=%v, want csi alias with host route", dst, ok, hasRoute("100.120.159.93"))
+	}
+	if _, ok := aliasFor("100.64.0.2"); ok || hasRoute("100.64.0.2") {
+		t.Fatal("canonical IP held by two profiles was routed")
+	}
+	if dst, ok := plan.Table.Destinations.Get(netip.MustParsePrefix("10.250.0.99/32")); ok && dst.Alias {
+		t.Fatal("canonical IP inside the synthetic pool was routed as an alias")
+	}
 }

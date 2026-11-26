@@ -248,6 +248,12 @@ Rules:
   concurrently through effective IPs.
 - Route lookup maps each effective IP to exactly one profile and canonical
   node or Service.
+- A canonical node or Service IP that exactly one active profile has is also
+  routed as itself, so addresses from public DNS or typed by hand behave as
+  with a single tailnet. A canonical IP that several profiles share, or that
+  collides with a anyscale local address, is not routed. Replies to a flow
+  dialed through a canonical IP keep that source address; the mux tracks
+  such flows with conntrack-style idle timeouts across mapper replacements.
 - A subnet binding is installed only while the selected profile reports an
   approved primary advertised route equal to or covering the requested prefix.
   A narrower binding can accept only part of an advertisement.

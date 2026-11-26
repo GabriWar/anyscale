@@ -73,6 +73,7 @@ func (m *Mux) SetMapper(mapper *packetmap.Mapper) {
 	if mapper == nil {
 		panic("nil packet mapper")
 	}
+	mapper.InheritFlows(m.mapper.Load())
 	m.mapper.Store(mapper)
 }
 
